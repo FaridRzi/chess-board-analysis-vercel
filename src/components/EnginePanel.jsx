@@ -1,12 +1,24 @@
 import { MULTIPV } from '../lib/engine.js';
 import { chessAt, fmtEval, moveNumberLabel, pvToSan, turnOf } from '../lib/chess.js';
 
-function Sans({ sans, firstClass }) {
+/** Numbered SAN moves. With onPick, each move is clickable (mouse); the row itself handles the keyboard. */
+function Sans({ sans, firstClass, onPick }) {
   return sans.map((m, j) => (
     <span key={j}>
       {j > 0 && ' '}
       {m.num && <span className="num">{m.num}</span>}
-      <span className={'san' + (j === 0 && firstClass ? ' ' + firstClass : '')}>{m.san}</span>
+      <span
+        className={'san' + (j === 0 && firstClass ? ' ' + firstClass : '') + (onPick ? ' pick' : '')}
+        onClick={
+          onPick &&
+          ((e) => {
+            e.stopPropagation();
+            onPick(j);
+          })
+        }
+      >
+        {m.san}
+      </span>
     </span>
   ));
 }
@@ -112,25 +124,27 @@ export default function EnginePanel({ node, engine, engineOn, locked, depth, onT
           continue;
         }
         const sans = pvToSan(fen, l.pv, 12);
+        const pv = l.pv.slice(0, sans.length);
         rows.push(
           <li
             key={i}
             className="line"
             tabIndex={0}
             role="button"
-            aria-label={`Play ${sans[0] ? sans[0].san : ''}`}
-            onClick={() => onPlay(l.pv[0])}
+            aria-label={`Show line ${i + 1}: ${sans.map((m) => m.san).join(' ')}`}
+            title="Click a move to see that position"
+            onClick={() => onPlay(pv, 0)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                onPlay(l.pv[0]);
+                onPlay(pv, 0);
               }
             }}
           >
             <span className="rank">{i + 1}</span>
             <Ev line={l} />
             <span className="pv">
-              <Sans sans={sans} firstClass="first" />
+              <Sans sans={sans} firstClass="first" onPick={(j) => onPlay(pv, j)} />
             </span>
           </li>
         );

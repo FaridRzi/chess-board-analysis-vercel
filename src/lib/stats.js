@@ -13,6 +13,22 @@ export function outcomeOf(code) {
   return DRAWS.has(code) ? 'draw' : 'loss';
 }
 
+// Standard games are typed by time control; variants (Chess960 etc.) are their own type.
+export const BASE_TYPES = ['bullet', 'blitz', 'rapid', 'daily'];
+const TYPE_LABELS = {
+  bullet: 'Bullet',
+  blitz: 'Blitz',
+  rapid: 'Rapid',
+  daily: 'Daily',
+  chess960: 'Chess960',
+  kingofthehill: 'King of the Hill',
+  threecheck: '3 Check',
+  crazyhouse: 'Crazyhouse',
+  bughouse: 'Bughouse',
+  oddschess: 'Odds chess',
+};
+export const typeLabel = (t) => TYPE_LABELS[t] || t.charAt(0).toUpperCase() + t.slice(1);
+
 export const PRESETS = [
   { id: '1d', label: '1 Day', ms: DAY },
   { id: '1w', label: '1 Week', ms: 7 * DAY },
@@ -110,6 +126,7 @@ function toRecord(g, color) {
     opponent: opp.username,
     oppRating: opp.rating,
     timeClass: g.time_class,
+    gameType: g.rules && g.rules !== 'chess' ? g.rules : g.time_class,
     timeControl: g.time_control,
     rules: g.rules,
     rated: g.rated,

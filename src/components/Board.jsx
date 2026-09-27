@@ -10,7 +10,47 @@ const BRUSHES = {
 };
 
 /** Lichess's chessground board. Either color can be moved (see GameTree.userMove). */
-export default function Board({ node, orientation, arrows, onMove, redraw, visible = true }) {
+const PROMOTION_PIECES = [
+  ['q', 'queen'],
+  ['n', 'knight'],
+  ['r', 'rook'],
+  ['b', 'bishop'],
+];
+
+/** Lichess-style picker: the four pieces stacked on the promotion square's file, from the board edge inward. */
+function PromotionPicker({ to, color, orientation, onPick }) {
+  const first = useRef(null);
+  useEffect(() => {
+    first.current && first.current.focus();
+    const onKey = (e) => e.key === 'Escape' && onPick(null);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onPick]);
+  const file = to.charCodeAt(0) - 97;
+  const col = orientation === 'white' ? file : 7 - file;
+  const fromTop = (to[1] === '8') === (orientation === 'white');
+  return (
+    <div className="cg-wrap promo" role="dialog" aria-label="Promote to" onClick={() => onPick(null)}>
+      {PROMOTION_PIECES.map(([p, name], i) => (
+        <button
+          key={p}
+          ref={i === 0 ? first : null}
+          type="button"
+          aria-label={name}
+          style={{ left: col * 12.5 + '%', [fromTop ? 'top' : 'bottom']: i * 12.5 + '%' }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPick(p);
+          }}
+        >
+          <piece className={name + ' ' + color} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function Board({ node, orientation, arrows, onMove, redraw, visible = true, promotion, onPromote }) {
   const el = useRef(null);
   const api = useRef(null);
   const onMoveRef = useRef(onMove);
@@ -55,6 +95,7 @@ export default function Board({ node, orientation, arrows, onMove, redraw, visib
   return (
     <div className="boardsize">
       <div ref={el} className="board" />
+      {promotion && <PromotionPicker to={promotion.to} color={promotion.color} orientation={orientation} onPick={onPromote} />}
     </div>
   );
 }

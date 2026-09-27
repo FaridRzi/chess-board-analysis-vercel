@@ -47,26 +47,43 @@ export class GameTree {
     const r = tryMove(c, { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
     return r ? this.addChild(node, r, c.fen()) : null;
   }
+  /** Plays a line of UCI moves from `node`; returns the node after move `upto` (0-based). */
+  playLine(node, pv, upto) {
+    let n = node;
+    let target = null;
+    for (let i = 0; i < pv.length && n; i++) {
+      n = this.playUci(n, pv[i]);
+      if (i === upto) target = n;
+    }
+    return target;
+  }
   /**
-   * A drag on the board. A piece of the side to move plays the next move;
+   * Where a drag on the board applies. A piece of the side to move plays the next move;
    * a piece of the side that just moved changes that move instead.
    */
-  userMove(node, from, to) {
-    const here = chessAt(node.fen);
-    const piece = here.get(from);
-    const turn = node.fen.split(' ')[1];
-    if (piece && piece.color === turn) {
-      const r = tryMove(here, { from, to, promotion: 'q' });
-      return r ? this.addChild(node, r, here.fen()) : null;
-    }
+  dropTarget(node, from) {
+    const piece = chessAt(node.fen).get(from);
+    if (piece && piece.color === node.fen.split(' ')[1]) return { parent: node, origin: from };
     if (node.parent && node.lastMove) {
       const [lf, lt] = node.lastMove;
-      const origin = from === lt ? lf : from;
-      const before = chessAt(node.parent.fen);
-      const r = tryMove(before, { from: origin, to, promotion: 'q' });
-      return r ? this.addChild(node.parent, r, before.fen()) : null;
+      return { parent: node.parent, origin: from === lt ? lf : from };
     }
     return null;
+  }
+  /** True when the drag is a legal pawn promotion, so the user has to pick a piece. */
+  isPromotion(node, from, to) {
+    const t = this.dropTarget(node, from);
+    if (!t) return false;
+    return chessAt(t.parent.fen)
+      .moves({ square: t.origin, verbose: true })
+      .some((m) => m.to === to && m.promotion);
+  }
+  userMove(node, from, to, promotion = 'q') {
+    const t = this.dropTarget(node, from);
+    if (!t) return null;
+    const c = chessAt(t.parent.fen);
+    const r = tryMove(c, { from: t.origin, to, promotion });
+    return r ? this.addChild(t.parent, r, c.fen()) : null;
   }
   deleteLineAt(node) {
     const start = lineStartOf(node);

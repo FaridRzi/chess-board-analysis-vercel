@@ -1,15 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
-import { ENDINGS, PRESETS, byOpponentRating, endingOf, fetchPlayerGames, openingName, rangeFor, summarize } from '../lib/stats.js';
+import { BASE_TYPES, ENDINGS, PRESETS, byOpponentRating, endingOf, fetchPlayerGames, openingName, rangeFor, summarize, typeLabel } from '../lib/stats.js';
 import { Pie, RatingBars, pct } from '../components/Charts.jsx';
 
-const TIME_CLASSES = ['bullet', 'blitz', 'rapid', 'daily'];
 const OUTCOMES = [
   { key: 'win', label: 'Won' },
   { key: 'draw', label: 'Drew' },
   { key: 'loss', label: 'Lost' },
 ];
 
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const isoDay = (d) => {
   const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
   return z.toISOString().slice(0, 10);
@@ -259,7 +257,7 @@ export default function StatsPage({ active }) {
   const [from, setFrom] = useState(isoDay(new Date(Date.now() - 30 * 86400000)));
   const [to, setTo] = useState(today);
   const [status, setStatus] = useState({ state: 'idle' });
-  const [timeClass, setTimeClass] = useState('all');
+  const [hiddenTypes, setHiddenTypes] = useState([]); // game types switched off; new types start on
   const abort = useRef(null);
 
   const customBad = preset === 'custom' && (!from || !to || from > to);
@@ -283,7 +281,6 @@ export default function StatsPage({ active }) {
         signal: ctrl.signal,
         onProgress: (done, total) => setStatus({ state: 'loading', done, total }),
       });
-      setTimeClass('all');
       setStatus({ state: 'done', user: games.length ? games[games.length - 1].username : user, games, fromMs, toMs });
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -293,15 +290,14 @@ export default function StatsPage({ active }) {
   }
 
   const games = status.state === 'done' ? status.games : null;
-  const counts = useMemo(() => {
+  const typeCounts = useMemo(() => {
     const c = {};
-    for (const g of games || []) c[g.timeClass] = (c[g.timeClass] || 0) + 1;
+    for (const g of games || []) c[g.gameType] = (c[g.gameType] || 0) + 1;
     return c;
   }, [games]);
-  const shown = useMemo(
-    () => (games ? (timeClass === 'all' ? games : games.filter((g) => g.timeClass === timeClass)) : null),
-    [games, timeClass]
-  );
+  const types = [...BASE_TYPES, ...Object.keys(typeCounts).filter((t) => !BASE_TYPES.includes(t)).sort()];
+  const toggleType = (t) => setHiddenTypes((h) => (h.includes(t) ? h.filter((x) => x !== t) : [...h, t]));
+  const shown = useMemo(() => games && games.filter((g) => !hiddenTypes.includes(g.gameType)), [games, hiddenTypes]);
   const s = useMemo(() => shown && summarize(shown), [shown]);
 
   return (
@@ -325,6 +321,19 @@ export default function StatsPage({ active }) {
             {PRESETS.map((p) => (
               <button key={p.id} type="button" aria-pressed={preset === p.id} onClick={() => setPreset(p.id)}>
                 {p.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="field">
+          <legend>Game type</legend>
+          <div className="seg-control chips">
+            <button type="button" aria-pressed={hiddenTypes.length === 0} onClick={() => setHiddenTypes([])}>
+              All {games && <span>{games.length}</span>}
+            </button>
+            {types.map((t) => (
+              <button key={t} type="button" aria-pressed={!hiddenTypes.includes(t)} onClick={() => toggleType(t)}>
+                {typeLabel(t)} {games && <span>{typeCounts[t] || 0}</span>}
               </button>
             ))}
           </div>
@@ -370,28 +379,23 @@ export default function StatsPage({ active }) {
             <p className="stats-note">No finished games in this range. Try a longer one.</p>
           ) : (
             <>
-              <div className="seg-control chips" role="group" aria-label="Time control">
-                <button type="button" aria-pressed={timeClass === 'all'} onClick={() => setTimeClass('all')}>
-                  All <span>{games.length}</span>
-                </button>
-                {TIME_CLASSES.filter((tc) => counts[tc]).map((tc) => (
-                  <button key={tc} type="button" aria-pressed={timeClass === tc} onClick={() => setTimeClass(tc)}>
-                    {cap(tc)} <span>{counts[tc]}</span>
-                  </button>
-                ))}
-              </div>
+              {shown.length === 0 ? (
+                <p className="stats-note">No games of the selected game types. Switch one on under Game type.</p>
+              ) : (
+                <>
+                  <div className="tiles">
+                    <Tile label="Games played" value={s.all.games} white={s.white.games} black={s.black.games} />
+                    <Tile label="Wins" value={s.all.win} white={s.white.win} black={s.black.win} />
+                    <Tile label="Win rate" value={pct(s.all.winRate)} white={pct(s.white.winRate)} black={pct(s.black.winRate)} />
+                  </div>
 
-              <div className="tiles">
-                <Tile label="Games played" value={s.all.games} white={s.white.games} black={s.black.games} />
-                <Tile label="Wins" value={s.all.win} white={s.white.win} black={s.black.win} />
-                <Tile label="Win rate" value={pct(s.all.winRate)} white={pct(s.white.winRate)} black={pct(s.black.winRate)} />
-              </div>
-
-              <ResultPies s={s} />
-              <RatingCard games={shown} />
-              <EndingsCard games={shown} />
-              <OpeningsCard games={shown} />
-              <p className="foot">Win rate is wins ÷ games; draws count as not won. Dates use your local time.</p>
+                  <ResultPies s={s} />
+                  <RatingCard games={shown} />
+                  <EndingsCard games={shown} />
+                  <OpeningsCard games={shown} />
+                  <p className="foot">Win rate is wins ÷ games; draws count as not won. Dates use your local time.</p>
+                </>
+              )}
             </>
           )}
         </>

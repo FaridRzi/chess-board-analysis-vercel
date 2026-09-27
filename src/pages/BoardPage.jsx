@@ -52,6 +52,7 @@ export default function BoardPage({ active }) {
   const [depth, setDepth] = useState(20);
   const [source, setSource] = useState('');
   const [loading, setLoading] = useState(false);
+  const [promotion, setPromotion] = useState(null); // { from, to, color } while the user picks a piece
 
   const { tree, cur, headers } = game;
   const locked = headers.Result === '*'; // game still in progress
@@ -60,6 +61,7 @@ export default function BoardPage({ active }) {
 
   const goTo = useCallback((node) => {
     if (!node) return;
+    setPromotion(null);
     setGame((g) => ({ ...g, cur: node }));
     setVersion((v) => v + 1);
   }, []);
@@ -143,14 +145,29 @@ export default function BoardPage({ active }) {
   }
 
   const onBoardMove = (from, to) => {
+    if (tree.isPromotion(cur, from, to)) {
+      setPromotion({ from, to, color: chessAt(cur.fen).get(from).color === 'w' ? 'white' : 'black' });
+      return;
+    }
     const next = tree.userMove(cur, from, to);
     if (next) goTo(next);
     else setVersion((v) => v + 1); // redraw to undo an invalid drop
   };
-  const onPlay = (uci) => goTo(tree.playUci(cur, uci));
+  const onPromote = useCallback(
+    (piece) => {
+      const p = promotion;
+      setPromotion(null);
+      const next = piece && p && tree.userMove(cur, p.from, p.to, piece);
+      if (next) goTo(next);
+      else setVersion((v) => v + 1); // cancelled: put the pawn back
+    },
+    [promotion, tree, cur, goTo]
+  );
+  // An engine line: add it to the move tree and jump to its move `upto`.
+  const onPlay = (pv, upto = 0) => goTo(tree.playLine(cur, pv, upto));
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || promotion) return;
     const onKey = (e) => {
       if (e.target.closest && e.target.closest('textarea, input, select')) return;
       if (e.key === 'ArrowLeft') goTo(cur.parent);
@@ -162,7 +179,7 @@ export default function BoardPage({ active }) {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [cur, tree, goTo, active]);
+  }, [cur, tree, goTo, active, promotion]);
 
   // Eval bar and arrows
   const c = chessAt(cur.fen);
@@ -218,7 +235,16 @@ export default function BoardPage({ active }) {
           <div className="boardrow">
             <EvalBar share={share} flipped={orientation === 'black'} />
             <div className="boardwrap">
-              <Board node={cur} orientation={orientation} arrows={arrows} onMove={onBoardMove} redraw={version} visible={active} />
+              <Board
+                node={cur}
+                orientation={orientation}
+                arrows={arrows}
+                onMove={onBoardMove}
+                redraw={version}
+                visible={active}
+                promotion={promotion}
+                onPromote={onPromote}
+              />
             </div>
           </div>
           {orientation === 'white' ? white : black}
@@ -270,7 +296,7 @@ export default function BoardPage({ active }) {
             <MoveList root={tree.root} cur={cur} result={headers.Result} onSelect={goTo} version={version} />
             <FenRow fen={cur.fen} />
           </section>
-          <p className="foot">Tap a line to play its first move. Drag the piece that just moved to change that move.</p>
+          <p className="foot">Tap an engine line, or any move in it, to see it on the board. Drag the piece that just moved to change that move.</p>
         </aside>
       </main>
     </div>

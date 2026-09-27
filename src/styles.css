@@ -491,3 +491,18 @@ circle.pie-slice { stroke-width: 22; vector-effect: none; }
   .openings .oname { min-width: 0; padding-left: 12px; }
   .card-head .filters, .card-head > .seg-control.small { margin-left: 0; }
 }
+
+/* engine line moves */
+.line .pv .san.pick { border-radius: 4px; padding: 0 2px; margin: 0 -2px; }
+.line .pv .san.pick:hover { background: var(--accent-soft); color: var(--accent); }
+
+/* promotion picker */
+.cg-wrap.promo { position: absolute; inset: 0; z-index: 5; background: rgba(10, 14, 20, .45); border-radius: 4px; }
+.cg-wrap.promo button {
+  position: absolute; width: 12.5%; height: 12.5%; padding: 0; border: 0; border-radius: 50%;
+  background: radial-gradient(#f3f5f7 20%, #9fb0be 85%); box-shadow: 0 1px 4px rgba(0, 0, 0, .4);
+  transition: border-radius .12s, background .12s;
+}
+.cg-wrap.promo button:hover, .cg-wrap.promo button:focus-visible { border-radius: 8%; background: radial-gradient(#ffffff 20%, #e0a93a 90%); }
+.cg-wrap.promo piece { position: static; display: block; width: 100%; height: 100%; transform: scale(.82); transition: transform .12s; }
+.cg-wrap.promo button:hover piece { transform: scale(1); }
