@@ -54,13 +54,16 @@ export default function BoardPage({ active }) {
   const [source, setSource] = useState('');
   const [loading, setLoading] = useState(false);
   const sourceBox = useRef(null);
+  const [collapsed, setCollapsed] = useState(false); // one line after a game loads; opens on tap
 
-  // Grow the box with its text (typed or pasted), up to a limit.
+  // Grow the box with its text (typed or pasted), up to a limit; one line while collapsed.
   useLayoutEffect(() => {
     const el = sourceBox.current;
+    el.style.height = '';
+    if (collapsed) return;
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 180) + 'px';
-  }, [source]);
+  }, [source, collapsed]);
   const [promotion, setPromotion] = useState(null); // { from, to, color } while the user picks a piece
   const [editing, setEditing] = useState(false); // board setup mode
 
@@ -95,6 +98,14 @@ export default function BoardPage({ active }) {
         : notice || null,
     });
     setVersion((v) => v + 1);
+    setCollapsed(true);
+    sourceBox.current && sourceBox.current.blur();
+  };
+
+  const clearSource = () => {
+    setSource('');
+    setCollapsed(false);
+    sourceBox.current.focus();
   };
 
   const setNotice = (notice) => setGame((g) => ({ ...g, notice }));
@@ -107,6 +118,7 @@ export default function BoardPage({ active }) {
         return;
       }
       setSource(text.trim());
+      setCollapsed(false);
       sourceBox.current.focus();
     } catch (e) {
       setNotice({
@@ -238,8 +250,15 @@ export default function BoardPage({ active }) {
             aria-label="Game link, PGN or moves"
             placeholder="Link, PGN or moves"
             ref={sourceBox}
+            className={collapsed ? 'collapsed' : ''}
+            title={collapsed ? 'Tap to show the full text' : undefined}
             value={source}
-            onChange={(e) => setSource(e.target.value)}
+            onChange={(e) => {
+              setSource(e.target.value);
+              setCollapsed(false);
+            }}
+            onFocus={() => setCollapsed(false)}
+            onClick={() => setCollapsed(false)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
@@ -247,6 +266,13 @@ export default function BoardPage({ active }) {
               }
             }}
           />
+          {source && (
+            <button type="button" className="clear-btn" aria-label="Clear" title="Clear" onClick={clearSource}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          )}
           <button type="button" className="btn-secondary" onClick={pasteClipboard} title="Paste from clipboard">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M9 4h6v3H9zM9 5H6v15h12V5h-3M9 12h6M9 16h4" />

@@ -161,6 +161,13 @@ button { cursor: pointer; }
   font-family: var(--mono); font-size: 13.5px; line-height: 1.5; padding: 6px 0;
   height: 34px; max-height: 160px; outline: none;
 }
+.import textarea.collapsed { height: 34px; padding: 0; line-height: 34px; overflow: hidden; color: var(--muted); cursor: pointer; }
+.clear-btn {
+  flex: none; align-self: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: none; color: var(--muted);
+  display: grid; place-items: center;
+}
+.clear-btn:hover { background: var(--panel-2); color: var(--ink); }
+.clear-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .import textarea::placeholder { color: var(--muted); font-family: var(--sans); font-size: 14.5px; }
 .import:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .btn-primary {
