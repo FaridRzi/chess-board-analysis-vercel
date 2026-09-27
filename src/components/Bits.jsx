@@ -1,0 +1,102 @@
+export function Player({ color, name, elo }) {
+  const shown = name && name !== '?' ? name : color === 'white' ? 'White' : 'Black';
+  return (
+    <div className="player" data-color={color}>
+      <span className="dot" />
+      <span className="pname">{shown}</span>
+      {elo && elo !== '?' && <span className="elo">{elo}</span>}
+    </div>
+  );
+}
+
+export function EvalBar({ share, flipped }) {
+  return (
+    <div className={'evalbar' + (flipped ? ' flipped' : '')} aria-hidden="true" style={{ '--white': (share * 100).toFixed(1) + '%' }}>
+      <div className="fill" />
+    </div>
+  );
+}
+
+const Icon = ({ d }) => (
+  <svg viewBox="0 0 24 24">
+    <path d={d} />
+  </svg>
+);
+
+export function NavBar({ onFirst, onPrev, onNext, onLast, onFlip, atStart, atEnd }) {
+  return (
+    <div className="navbar">
+      <button type="button" aria-label="First move" onClick={onFirst} disabled={atStart}>
+        <Icon d="M6 5v14M18 6l-7 6 7 6" />
+      </button>
+      <button type="button" aria-label="Previous move" onClick={onPrev} disabled={atStart}>
+        <Icon d="M15 6l-6 6 6 6" />
+      </button>
+      <button type="button" aria-label="Next move" onClick={onNext} disabled={atEnd}>
+        <Icon d="M9 6l6 6-6 6" />
+      </button>
+      <button type="button" aria-label="Last move" onClick={onLast} disabled={atEnd}>
+        <Icon d="M18 5v14M6 6l7 6-7 6" />
+      </button>
+      <button type="button" aria-label="Flip board" onClick={onFlip}>
+        <Icon d="M7 4v16M4 17l3 3 3-3M17 20V4M14 7l3-3 3 3" />
+      </button>
+    </div>
+  );
+}
+
+export function HowTo() {
+  return (
+    <details className="howto">
+      <summary>How to type a game</summary>
+      <div className="howto-body">
+        <p>Paste a Chess.com link, any PGN (Chess.com, Lichess and others), or just the moves. Only the moves are needed:</p>
+        <pre>1. e4 e5 2. Nf3 Nc6 3. Bb5 a6</pre>
+        <ul>
+          <li>
+            Move numbers are optional: <code>e4 e5 Nf3 Nc6</code> works too.
+          </li>
+          <li>
+            Pieces: <code>K Q R B N</code>. German <code>K D T L S</code> also works. Pawn moves are just the square:{' '}
+            <code>e4</code>, <code>exd5</code>.
+          </li>
+          <li>
+            Castling: <code>O-O</code> and <code>O-O-O</code> (zeros are fine).
+          </li>
+          <li>
+            Promotion: <code>e8=Q</code> or <code>e8Q</code>.
+          </li>
+          <li>
+            <code>x</code>, <code>+</code>, <code>#</code>, <code>!</code> and <code>?</code> are optional.
+          </li>
+          <li>Headers, clock times, comments and side lines are ignored.</li>
+        </ul>
+        <p>If a move has a typo, the game loads up to that move and tells you where it stopped.</p>
+      </div>
+    </details>
+  );
+}
+
+export function FenRow({ fen }) {
+  const copy = async (e) => {
+    const btn = e.currentTarget;
+    const input = btn.previousElementSibling;
+    try {
+      await navigator.clipboard.writeText(fen);
+      btn.textContent = 'Copied';
+      setTimeout(() => (btn.textContent = 'Copy'), 1400);
+    } catch (err) {
+      input.focus();
+      input.select();
+    }
+  };
+  return (
+    <div className="fenrow">
+      <label htmlFor="fen">FEN</label>
+      <input id="fen" readOnly value={fen} />
+      <button type="button" onClick={copy}>
+        Copy
+      </button>
+    </div>
+  );
+}

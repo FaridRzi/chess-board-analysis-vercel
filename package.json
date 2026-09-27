@@ -1,0 +1,25 @@
+{
+  "name": "candidate-lines",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Chess analysis board: import a Chess.com link, PGN or typed moves and see Stockfish 19's top 5 lines in the browser.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "chess.js": "1.4.0",
+    "chessground": "9.2.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.1.1",
+    "vite": "8.3.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
