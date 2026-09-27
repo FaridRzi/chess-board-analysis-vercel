@@ -26,20 +26,21 @@ const Icon = ({ d }) => (
 export function NavBar({ onFirst, onPrev, onNext, onLast, onFlip, atStart, atEnd }) {
   return (
     <div className="navbar">
-      <button type="button" aria-label="First move" onClick={onFirst} disabled={atStart}>
+      <button type="button" aria-label="First move" title="First move (↑ or Home)" onClick={onFirst} disabled={atStart}>
         <Icon d="M6 5v14M18 6l-7 6 7 6" />
       </button>
-      <button type="button" aria-label="Previous move" onClick={onPrev} disabled={atStart}>
+      <button type="button" aria-label="Previous move" title="Previous move (←)" onClick={onPrev} disabled={atStart}>
         <Icon d="M15 6l-6 6 6 6" />
       </button>
-      <button type="button" aria-label="Next move" onClick={onNext} disabled={atEnd}>
+      <button type="button" aria-label="Next move" title="Next move (→)" onClick={onNext} disabled={atEnd}>
         <Icon d="M9 6l6 6-6 6" />
       </button>
-      <button type="button" aria-label="Last move" onClick={onLast} disabled={atEnd}>
+      <button type="button" aria-label="Last move" title="Last move (↓ or End)" onClick={onLast} disabled={atEnd}>
         <Icon d="M18 5v14M6 6l7 6-7 6" />
       </button>
-      <button type="button" aria-label="Flip board" onClick={onFlip}>
+      <button type="button" className="flip" aria-label="Flip board" title="Flip board (F)" onClick={onFlip}>
         <Icon d="M7 4v16M4 17l3 3 3-3M17 20V4M14 7l3-3 3 3" />
+        <span>Flip</span>
       </button>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Chess, validateFen } from 'chess.js';
 import Board from '../components/Board.jsx';
 import BoardEditor from '../components/BoardEditor.jsx';
@@ -53,6 +53,14 @@ export default function BoardPage({ active }) {
   const [depth, setDepth] = useState(20);
   const [source, setSource] = useState('');
   const [loading, setLoading] = useState(false);
+  const sourceBox = useRef(null);
+
+  // Grow the box with its text (typed or pasted), up to a limit.
+  useLayoutEffect(() => {
+    const el = sourceBox.current;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+  }, [source]);
   const [promotion, setPromotion] = useState(null); // { from, to, color } while the user picks a piece
   const [editing, setEditing] = useState(false); // board setup mode
 
@@ -90,6 +98,24 @@ export default function BoardPage({ active }) {
   };
 
   const setNotice = (notice) => setGame((g) => ({ ...g, notice }));
+
+  async function pasteClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        setNotice({ kind: 'info', title: 'The clipboard is empty.', body: 'Copy a game link, PGN or moves first, then tap Paste.' });
+        return;
+      }
+      setSource(text.trim());
+      sourceBox.current.focus();
+    } catch (e) {
+      setNotice({
+        kind: 'info',
+        title: 'Couldn’t read the clipboard.',
+        body: 'Your browser blocked it. Click in the box and press ⌘V (Ctrl+V on Windows) instead.',
+      });
+    }
+  }
 
   async function handleLoad() {
     const raw = source.trim();
@@ -176,6 +202,7 @@ export default function BoardPage({ active }) {
       else if (e.key === 'ArrowRight') goTo(nextOf(cur));
       else if (e.key === 'Home' || e.key === 'ArrowUp') goTo(tree.root);
       else if (e.key === 'End' || e.key === 'ArrowDown') goTo(lastOf(cur));
+      else if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey) setOrientation((o) => (o === 'white' ? 'black' : 'white'));
       else return;
       e.preventDefault();
     };
@@ -210,12 +237,9 @@ export default function BoardPage({ active }) {
             autoComplete="off"
             aria-label="Game link, PGN or moves"
             placeholder="Link, PGN or moves"
+            ref={sourceBox}
             value={source}
-            onChange={(e) => {
-              setSource(e.target.value);
-              e.target.style.height = 'auto';
-              e.target.style.height = Math.min(e.target.scrollHeight, 180) + 'px';
-            }}
+            onChange={(e) => setSource(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
@@ -223,6 +247,12 @@ export default function BoardPage({ active }) {
               }
             }}
           />
+          <button type="button" className="btn-secondary" onClick={pasteClipboard} title="Paste from clipboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 4h6v3H9zM9 5H6v15h12V5h-3M9 12h6M9 16h4" />
+            </svg>
+            Paste
+          </button>
           <button id="load" className="btn-primary" type="button" onClick={handleLoad} disabled={loading}>
             {loading ? 'Loading…' : 'Load'}
           </button>
@@ -292,13 +322,13 @@ export default function BoardPage({ active }) {
             />
 
             <section className="card" aria-label="Moves">
-              <div className="gamehead">
-                <strong>{game.label}</strong>
-                <span>{meta.join(' · ')}</span>
-              </div>
-              {!cur.main && (
-                <div className="explore-bar">
-                  <span>You’re in your own line</span>
+              {/* One fixed-height header: the side-line actions replace the game details instead of adding a row. */}
+              <div className={'gamehead' + (cur.main ? '' : ' exploring')}>
+                <div className="gamehead-text">
+                  <strong>{game.label}</strong>
+                  <span>{cur.main ? meta.join(' · ') : 'You’re in your own line'}</span>
+                </div>
+                {!cur.main && (
                   <span className="explore-actions">
                     <button type="button" onClick={() => goTo(tree.deleteLineAt(cur))}>
                       Delete line
@@ -307,8 +337,8 @@ export default function BoardPage({ active }) {
                       Back to game
                     </button>
                   </span>
-                </div>
-              )}
+                )}
+              </div>
               <MoveList root={tree.root} cur={cur} result={headers.Result} onSelect={goTo} version={version} />
               <FenRow fen={cur.fen} />
             </section>
