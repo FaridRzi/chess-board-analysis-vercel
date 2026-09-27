@@ -52,6 +52,7 @@ export default function App() {
             <path d="M4 7h16M4 12h16M4 17h16" />
           </svg>
         </button>
+        <img className="logo" src="/logo.png" alt="" width="34" height="34" />
         <h1>
           Candidate <span>Lines</span>
         </h1>
@@ -61,6 +62,7 @@ export default function App() {
       <div className={'scrim' + (menuOpen ? ' open' : '')} onClick={() => setMenuOpen(false)} aria-hidden="true" />
       <nav id="drawer" ref={drawer} className={'drawer' + (menuOpen ? ' open' : '')} aria-label="Pages" inert={!menuOpen}>
         <div className="drawer-head">
+          <img className="logo" src="/logo.png" alt="" width="30" height="30" />
           Candidate <span>Lines</span>
         </div>
         {PAGES.map((p) => (

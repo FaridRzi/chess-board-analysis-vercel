@@ -141,7 +141,8 @@ button { cursor: pointer; }
   transform: translateX(-102%); transition: transform .22s ease;
 }
 .drawer.open { transform: none; }
-.drawer-head { font-size: 17px; font-weight: 700; padding: 4px 10px 12px; }
+.drawer-head { font-size: 17px; font-weight: 700; padding: 4px 10px 12px; display: flex; align-items: center; gap: 10px; }
+.logo { display: block; flex: none; border-radius: 8px; box-shadow: 0 0 0 1px var(--line); }
 .drawer a {
   display: flex; flex-direction: column; gap: 1px; padding: 10px 12px; border-radius: 8px;
   color: var(--ink); text-decoration: none;
