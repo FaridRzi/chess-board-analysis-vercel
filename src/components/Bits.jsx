@@ -23,7 +23,7 @@ const Icon = ({ d }) => (
   </svg>
 );
 
-export function NavBar({ onFirst, onPrev, onNext, onLast, onFlip, atStart, atEnd }) {
+export function NavBar({ onFirst, onPrev, onNext, onLast, onFlip, onReset, atStart, atEnd, inSideLine }) {
   return (
     <div className="navbar">
       <button type="button" aria-label="First move" title="First move (↑ or Home)" onClick={onFirst} disabled={atStart}>
@@ -38,9 +38,20 @@ export function NavBar({ onFirst, onPrev, onNext, onLast, onFlip, atStart, atEnd
       <button type="button" aria-label="Last move" title="Last move (↓ or End)" onClick={onLast} disabled={atEnd}>
         <Icon d="M18 5v14M6 6l7 6-7 6" />
       </button>
-      <button type="button" className="flip" aria-label="Flip board" title="Flip board (F)" onClick={onFlip}>
+      <button type="button" className="labeled" aria-label="Flip board" title="Flip board (F)" onClick={onFlip}>
         <Icon d="M7 4v16M4 17l3 3 3-3M17 20V4M14 7l3-3 3 3" />
         <span>Flip</span>
+      </button>
+      <button
+        type="button"
+        className="labeled"
+        aria-label="Reset to the game"
+        title="Back to the game where your line branched off (R)"
+        onClick={onReset}
+        disabled={!inSideLine}
+      >
+        <Icon d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4.5h4.5" />
+        <span>Reset</span>
       </button>
     </div>
   );

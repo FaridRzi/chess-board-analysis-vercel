@@ -230,6 +230,7 @@ export default function BoardPage({ active }) {
       else if (e.key === 'Home' || e.key === 'ArrowUp') goTo(tree.root);
       else if (e.key === 'End' || e.key === 'ArrowDown') goTo(lastOf(cur));
       else if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey) setOrientation((o) => (o === 'white' ? 'black' : 'white'));
+      else if ((e.key === 'r' || e.key === 'R') && !e.metaKey && !e.ctrlKey && !e.altKey && !cur.main) goTo(mainAncestor(cur));
       else return;
       e.preventDefault();
     };
@@ -351,6 +352,8 @@ export default function BoardPage({ active }) {
               onNext={() => goTo(nextOf(cur))}
               onLast={() => goTo(lastOf(cur))}
               onFlip={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}
+              onReset={() => goTo(mainAncestor(cur))}
+              inSideLine={!cur.main}
             />
             <div className="status">
               <span>{turnOf(cur.fen) === 'white' ? 'White' : 'Black'} to move</span>
