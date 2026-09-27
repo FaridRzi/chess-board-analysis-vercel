@@ -10,7 +10,7 @@ const BRUSHES = {
 };
 
 /** Lichess's chessground board. Either color can be moved (see GameTree.userMove). */
-export default function Board({ node, orientation, arrows, onMove, redraw }) {
+export default function Board({ node, orientation, arrows, onMove, redraw, visible = true }) {
   const el = useRef(null);
   const api = useRef(null);
   const onMoveRef = useRef(onMove);
@@ -46,6 +46,11 @@ export default function Board({ node, orientation, arrows, onMove, redraw }) {
       arrows.map((u, i) => ({ orig: u.slice(0, 2), dest: u.slice(2, 4), brush: ['e1', 'e2', 'e3'][i] })).reverse()
     );
   }, [arrows]);
+
+  // Chessground measures the board once; re-measure after it was hidden by another page.
+  useEffect(() => {
+    if (visible) api.current.redrawAll();
+  }, [visible]);
 
   return (
     <div className="boardsize">

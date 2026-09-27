@@ -1,0 +1,278 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Chess, validateFen } from 'chess.js';
+import Board from '../components/Board.jsx';
+import EnginePanel from '../components/EnginePanel.jsx';
+import MoveList from '../components/MoveList.jsx';
+import { EvalBar, FenRow, HowTo, NavBar, Player } from '../components/Bits.jsx';
+import { useEngine } from '../useEngine.js';
+import { GameTree, lastOf, mainAncestor, nextOf } from '../lib/tree.js';
+import { parseGameText, looksLikeFen, labelFor } from '../lib/pgn.js';
+import { parseChessComLink, fetchChessComGame } from '../lib/chesscom.js';
+import { chessAt, formatTimeControl, turnOf, winShare } from '../lib/chess.js';
+
+const SAMPLE_PGN = `[Event "Opera Game"]
+[Site "Paris"]
+[Date "1858.11.02"]
+[White "Paul Morphy"]
+[Black "Duke Karl / Count Isouard"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. dxe5 Bxf3 5. Qxf3 dxe5 6. Bc4 Nf6 7. Qb3 Qe7
+8. Nc3 c6 9. Bg5 b5 10. Nxb5 cxb5 11. Bxb5+ Nbd7 12. O-O-O Rd8 13. Rxd7 Rxd7
+14. Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8# 1-0`;
+
+function initialGame() {
+  const g = parseGameText(SAMPLE_PGN);
+  const tree = new GameTree(g.startFen, g.moves);
+  let node = tree.root;
+  for (let i = 0; i < 18 && nextOf(node); i++) node = nextOf(node);
+  return {
+    tree,
+    cur: node,
+    headers: { ...g.headers, Result: g.result },
+    label: 'Sample · Morphy’s Opera Game, 1858',
+    notice: null,
+  };
+}
+
+function Notice({ notice }) {
+  if (!notice) return null;
+  return (
+    <div className={'notice ' + notice.kind} role="status">
+      <strong>{notice.title}</strong> {notice.body}
+    </div>
+  );
+}
+
+export default function BoardPage({ active }) {
+  const [game, setGame] = useState(initialGame);
+  const [version, setVersion] = useState(0); // bumps when the tree changes or the board must redraw
+  const [orientation, setOrientation] = useState('white');
+  const [engineWanted, setEngineWanted] = useState(true);
+  const [depth, setDepth] = useState(20);
+  const [source, setSource] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const { tree, cur, headers } = game;
+  const locked = headers.Result === '*'; // game still in progress
+  const engineOn = engineWanted && !locked && active;
+  const engine = useEngine({ fen: cur.fen, enabled: engineOn, depth });
+
+  const goTo = useCallback((node) => {
+    if (!node) return;
+    setGame((g) => ({ ...g, cur: node }));
+    setVersion((v) => v + 1);
+  }, []);
+
+  const loadGame = (h, startFen, moves, label, notice, startPly = 0) => {
+    const t = new GameTree(startFen, moves);
+    let node = t.root;
+    for (let i = 0; i < startPly && nextOf(node); i++) node = nextOf(node);
+    const inProgress = h.Result === '*';
+    setGame({
+      tree: t,
+      cur: node,
+      headers: h,
+      label,
+      notice: inProgress
+        ? {
+            kind: 'warn',
+            title: 'This game is still in progress, so the engine is off.',
+            body: 'Chess.com’s fair-play rules don’t allow engine help in ongoing games, daily games included. Load it again once the game has finished to review it.',
+          }
+        : notice || null,
+    });
+    setVersion((v) => v + 1);
+  };
+
+  const setNotice = (notice) => setGame((g) => ({ ...g, notice }));
+
+  async function handleLoad() {
+    const raw = source.trim();
+    if (!raw) return;
+    const link = parseChessComLink(raw);
+    if (link) {
+      setLoading(true);
+      try {
+        const g = await fetchChessComGame(link.kind, link.id);
+        loadGame(g.headers, g.startFen, g.moves, `Chess.com ${link.kind} game ${link.id}`);
+      } catch (e) {
+        setNotice({
+          kind: 'info',
+          title: `Couldn’t load game ${link.id} from Chess.com.`,
+          body: `${e.message} Paste its PGN instead: in the Chess.com app, open the game, tap Share → PGN → Copy, then paste it above and tap Load.`,
+        });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    if (/^https?:\/\//i.test(raw)) {
+      setNotice({ kind: 'error', title: 'That link isn’t a Chess.com game.', body: 'For other sites, copy the game’s PGN and paste it here.' });
+      return;
+    }
+    if (looksLikeFen(raw)) {
+      const v = validateFen(raw);
+      if (v.ok) loadGame({}, new Chess(raw).fen(), [], 'Position from FEN');
+      else setNotice({ kind: 'error', title: 'That FEN isn’t valid.', body: v.error });
+      return;
+    }
+    const g = parseGameText(raw);
+    if (g.error) {
+      setNotice({ kind: 'error', title: 'Couldn’t load that game.', body: g.error });
+      return;
+    }
+    if (!g.moves.length && g.stoppedAt) {
+      setNotice({
+        kind: 'error',
+        title: `Couldn’t read the first move, “${g.stoppedAt.label}”.`,
+        body: 'Write moves like 1. e4 e5 2. Nf3 Nc6. See “How to type a game” below the box.',
+      });
+      return;
+    }
+    const h = { ...g.headers };
+    if (g.result) h.Result = g.result;
+    const notice = g.stoppedAt
+      ? {
+          kind: 'warn',
+          title: `Loaded ${g.moves.length} move${g.moves.length === 1 ? '' : 's'}, then stopped at ${g.stoppedAt.label}.`,
+          body: 'That move isn’t legal in the position (or has a typo). Fix it in the box and tap Load again.',
+        }
+      : null;
+    loadGame(h, g.startFen, g.moves, labelFor(h), notice);
+  }
+
+  const onBoardMove = (from, to) => {
+    const next = tree.userMove(cur, from, to);
+    if (next) goTo(next);
+    else setVersion((v) => v + 1); // redraw to undo an invalid drop
+  };
+  const onPlay = (uci) => goTo(tree.playUci(cur, uci));
+
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e) => {
+      if (e.target.closest && e.target.closest('textarea, input, select')) return;
+      if (e.key === 'ArrowLeft') goTo(cur.parent);
+      else if (e.key === 'ArrowRight') goTo(nextOf(cur));
+      else if (e.key === 'Home') goTo(tree.root);
+      else if (e.key === 'End') goTo(lastOf(cur));
+      else return;
+      e.preventDefault();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [cur, tree, goTo, active]);
+
+  // Eval bar and arrows
+  const c = chessAt(cur.fen);
+  let share = 0.5;
+  if (c.isCheckmate()) share = turnOf(cur.fen) === 'white' ? 0 : 1;
+  else if (!c.isGameOver() && engineOn && engine.lines[0]) share = winShare(engine.lines[0]);
+  const arrowKey = engineOn ? engine.lines.slice(0, 3).map((l) => (l ? l.pv[0] : '')).join(',') : '';
+  const arrows = useMemo(() => (arrowKey ? arrowKey.split(',').filter(Boolean) : []), [arrowKey]);
+
+  const meta = [];
+  if (headers.Date && !/^\?/.test(headers.Date)) meta.push(headers.Date.replace(/\./g, '-').replace(/-\?\?/g, ''));
+  if (headers.TimeControl && headers.TimeControl !== '-') meta.push(formatTimeControl(headers.TimeControl));
+  if (headers.Result) meta.push(headers.Result === '*' ? 'In progress' : headers.Result);
+
+  const white = <Player color="white" name={headers.White} elo={headers.WhiteElo} />;
+  const black = <Player color="black" name={headers.Black} elo={headers.BlackElo} />;
+
+  return (
+    <div className="page" hidden={!active}>
+      <header className="top">
+        <div className="import">
+          <textarea
+            id="source"
+            rows={1}
+            spellCheck={false}
+            autoComplete="off"
+            aria-label="Game link, PGN or moves"
+            placeholder="Link, PGN or moves"
+            value={source}
+            onChange={(e) => {
+              setSource(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = Math.min(e.target.scrollHeight, 180) + 'px';
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                handleLoad();
+              }
+            }}
+          />
+          <button id="load" className="btn-primary" type="button" onClick={handleLoad} disabled={loading}>
+            {loading ? 'Loading…' : 'Load'}
+          </button>
+        </div>
+        <HowTo />
+        <Notice notice={game.notice} />
+      </header>
+
+      <main className="layout">
+        <section className="boardcol" aria-label="Board">
+          {orientation === 'white' ? black : white}
+          <div className="boardrow">
+            <EvalBar share={share} flipped={orientation === 'black'} />
+            <div className="boardwrap">
+              <Board node={cur} orientation={orientation} arrows={arrows} onMove={onBoardMove} redraw={version} visible={active} />
+            </div>
+          </div>
+          {orientation === 'white' ? white : black}
+          <NavBar
+            atStart={!cur.parent}
+            atEnd={!nextOf(cur)}
+            onFirst={() => goTo(tree.root)}
+            onPrev={() => goTo(cur.parent)}
+            onNext={() => goTo(nextOf(cur))}
+            onLast={() => goTo(lastOf(cur))}
+            onFlip={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}
+          />
+          <div className="status">
+            <span>{turnOf(cur.fen) === 'white' ? 'White' : 'Black'} to move</span>
+            <span>Drag a piece to explore</span>
+          </div>
+        </section>
+
+        <aside className="side">
+          <EnginePanel
+            node={cur}
+            engine={engine}
+            engineOn={engineOn}
+            locked={locked}
+            depth={depth}
+            onToggle={setEngineWanted}
+            onDepth={setDepth}
+            onPlay={onPlay}
+          />
+
+          <section className="card" aria-label="Moves">
+            <div className="gamehead">
+              <strong>{game.label}</strong>
+              <span>{meta.join(' · ')}</span>
+            </div>
+            {!cur.main && (
+              <div className="explore-bar">
+                <span>You’re in your own line</span>
+                <span className="explore-actions">
+                  <button type="button" onClick={() => goTo(tree.deleteLineAt(cur))}>
+                    Delete line
+                  </button>
+                  <button type="button" onClick={() => goTo(mainAncestor(cur))}>
+                    Back to game
+                  </button>
+                </span>
+              </div>
+            )}
+            <MoveList root={tree.root} cur={cur} result={headers.Result} onSelect={goTo} version={version} />
+            <FenRow fen={cur.fen} />
+          </section>
+          <p className="foot">Tap a line to play its first move. Drag the piece that just moved to change that move.</p>
+        </aside>
+      </main>
+    </div>
+  );
+}

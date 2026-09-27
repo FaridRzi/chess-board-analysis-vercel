@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "dev", "runtimeExecutable": "/usr/local/bin/node", "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5173", "--strictPort"], "port": 5173 },
+    { "name": "dev-attach", "url": "http://localhost:5173" }
+  ]
+}
