@@ -1,14 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { moveNumberLabel } from '../lib/chess.js';
 import { isAncestorOrSelf } from '../lib/tree.js';
+import { KINDS } from '../lib/review.js';
 
-function MoveBtn({ node, cur, onSelect, variant }) {
+function MoveBtn({ node, cur, onSelect, variant, mark }) {
   const cls = ['mv'];
   if (variant) cls.push('v');
   if (node === cur) cls.push('cur');
   return (
-    <button type="button" className={cls.join(' ')} onClick={() => onSelect(node)}>
+    <button type="button" className={cls.join(' ')} onClick={() => onSelect(node)} aria-label={mark ? `${node.san}, ${KINDS[mark].label}` : undefined}>
       {node.san}
+      {mark && <span className={'glyph ' + mark}>{KINDS[mark].glyph}</span>}
     </button>
   );
 }
@@ -53,7 +55,7 @@ function InlineLine({ parent, first, cur, onSelect }) {
   return <>{parts}</>;
 }
 
-export default function MoveList({ root, cur, result, onSelect, version }) {
+export default function MoveList({ root, cur, result, onSelect, version, marks }) {
   const wrap = useRef(null);
 
   useEffect(() => {
@@ -79,7 +81,7 @@ export default function MoveList({ root, cur, result, onSelect, version }) {
         items.push(<span key={`mn${mainChild.id}`} className="mn">{n}.</span>);
         items.push(<span key={`g${mainChild.id}`} className="mv ghost">…</span>);
       }
-      items.push(<MoveBtn key={mainChild.id} node={mainChild} cur={cur} onSelect={onSelect} />);
+      items.push(<MoveBtn key={mainChild.id} node={mainChild} cur={cur} onSelect={onSelect} mark={marks && marks.get(mainChild.id)} />);
       needDots = false;
     }
     if (vars.length) {

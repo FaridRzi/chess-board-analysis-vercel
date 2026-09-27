@@ -2,6 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Chess, validateFen } from 'chess.js';
 import Board from '../components/Board.jsx';
 import BoardEditor from '../components/BoardEditor.jsx';
+import ReviewLane from '../components/ReviewLane.jsx';
+import { useReview } from '../useReview.js';
+import { mainLine } from '../lib/review.js';
 import EnginePanel from '../components/EnginePanel.jsx';
 import MoveList from '../components/MoveList.jsx';
 import { EvalBar, FenRow, HowTo, NavBar, Player } from '../components/Bits.jsx';
@@ -71,6 +74,10 @@ export default function BoardPage({ active }) {
   const locked = headers.Result === '*'; // game still in progress
   const engineOn = engineWanted && !locked && active && !editing;
   const engine = useEngine({ fen: cur.fen, enabled: engineOn, depth });
+  // Game review runs whenever the engine is allowed (never for games in progress).
+  const review = useReview(tree, engineWanted && !locked);
+  const curMark = review.marks.get(cur.id) || null;
+  const boardMark = useMemo(() => (curMark ? { square: cur.lastMove[1], kind: curMark } : null), [curMark, cur]);
 
   const goTo = useCallback((node) => {
     if (!node) return;
@@ -106,6 +113,14 @@ export default function BoardPage({ active }) {
     setSource('');
     setCollapsed(false);
     sourceBox.current.focus();
+  };
+
+  // From the review lane: the next main-line move of this kind by this player, wrapping around.
+  const jumpToMark = (kind, color) => {
+    const line = mainLine(tree);
+    const here = line.indexOf(mainAncestor(cur));
+    const hits = line.filter((n) => n.parent && review.marks.get(n.id) === kind && turnOf(n.parent.fen) === color);
+    if (hits.length) goTo(hits.find((n) => line.indexOf(n) > here) || hits[0]);
   };
 
   const setNotice = (notice) => setGame((g) => ({ ...g, notice }));
@@ -287,6 +302,15 @@ export default function BoardPage({ active }) {
         <Notice notice={game.notice} />
       </header>
 
+      {!editing && (
+        <ReviewLane
+          review={review}
+          white={headers.White && headers.White !== '?' ? headers.White : 'White'}
+          black={headers.Black && headers.Black !== '?' ? headers.Black : 'Black'}
+          onJump={jumpToMark}
+        />
+      )}
+
       {editing ? (
         <BoardEditor
           initialFen={cur.fen}
@@ -314,6 +338,7 @@ export default function BoardPage({ active }) {
                   visible={active}
                   promotion={promotion}
                   onPromote={onPromote}
+                  mark={boardMark}
                 />
               </div>
             </div>
@@ -345,6 +370,7 @@ export default function BoardPage({ active }) {
               onToggle={setEngineWanted}
               onDepth={setDepth}
               onPlay={onPlay}
+              mark={curMark}
             />
 
             <section className="card" aria-label="Moves">
@@ -365,7 +391,7 @@ export default function BoardPage({ active }) {
                   </span>
                 )}
               </div>
-              <MoveList root={tree.root} cur={cur} result={headers.Result} onSelect={goTo} version={version} />
+              <MoveList root={tree.root} cur={cur} result={headers.Result} onSelect={goTo} version={version} marks={review.marks} />
               <FenRow fen={cur.fen} />
             </section>
             <p className="foot">Tap an engine line, or any move in it, to see it on the board. Drag the piece that just moved to change that move.</p>

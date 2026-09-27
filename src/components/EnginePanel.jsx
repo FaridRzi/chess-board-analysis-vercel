@@ -1,4 +1,5 @@
 import { MULTIPV } from '../lib/engine.js';
+import { KINDS } from '../lib/review.js';
 import { chessAt, fmtEval, moveNumberLabel, pvToSan, turnOf } from '../lib/chess.js';
 
 /** Numbered SAN moves. With onPick, each move is clickable (mouse); the row itself handles the keyboard. */
@@ -29,7 +30,7 @@ function Ev({ line }) {
 }
 
 /** The move that led here: its evaluation and whether it was one of the engine's top 5. */
-function PlayedRow({ node, best, cache }) {
+function PlayedRow({ node, best, cache, mark }) {
   if (!node.parent || !node.uci) return null;
   const prevLines = cache.get(node.parent.fen) || [];
   const rank = prevLines.findIndex((l) => l && l.pv[0] === node.uci);
@@ -50,6 +51,11 @@ function PlayedRow({ node, best, cache }) {
           {who}
           {listed && <span className="tag ok">#{rank + 1} of top 5</span>}
           {known && !listed && <span className="tag off">Not in top 5</span>}
+          {mark && (
+            <span className={'tag rv ' + mark}>
+              {KINDS[mark].glyph} {KINDS[mark].label}
+            </span>
+          )}
         </span>
         <span className="num">
           {n}
@@ -61,7 +67,7 @@ function PlayedRow({ node, best, cache }) {
   );
 }
 
-export default function EnginePanel({ node, engine, engineOn, locked, depth, onToggle, onDepth, onPlay }) {
+export default function EnginePanel({ node, engine, engineOn, locked, depth, onToggle, onDepth, onPlay, mark }) {
   const { lines, meta, status, error, ready, cache } = engine;
   const fen = node.fen;
   const c = chessAt(fen);
@@ -152,7 +158,7 @@ export default function EnginePanel({ node, engine, engineOn, locked, depth, onT
     }
     body = (
       <>
-        <PlayedRow node={node} best={best} cache={cache} />
+        <PlayedRow node={node} best={best} cache={cache} mark={mark} />
         {rows}
       </>
     );

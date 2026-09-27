@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Chessground } from 'chessground';
 import { chessAt, turnOf } from '../lib/chess.js';
 import { destsFor } from '../lib/tree.js';
+import { KINDS } from '../lib/review.js';
 
 const BRUSHES = {
   e1: { key: 'e1', color: '#3d8bd9', opacity: 0.95, lineWidth: 12 },
@@ -50,7 +51,25 @@ function PromotionPicker({ to, color, orientation, onPick }) {
   );
 }
 
-export default function Board({ node, orientation, arrows, onMove, redraw, visible = true, promotion, onPromote }) {
+/** The review mark (??, !, !!) pinned to the top-right corner of the square the piece moved to. */
+function Badge({ square, kind, orientation }) {
+  const file = square.charCodeAt(0) - 97;
+  const rank = +square[1];
+  const col = orientation === 'white' ? file : 7 - file;
+  const row = orientation === 'white' ? 8 - rank : rank - 1;
+  return (
+    <span
+      className={'rv-badge ' + kind}
+      style={{ left: (col + 1) * 12.5 + '%', top: row * 12.5 + '%' }}
+      title={KINDS[kind].label}
+      aria-label={KINDS[kind].label}
+    >
+      {KINDS[kind].glyph}
+    </span>
+  );
+}
+
+export default function Board({ node, orientation, arrows, onMove, redraw, visible = true, promotion, onPromote, mark }) {
   const el = useRef(null);
   const api = useRef(null);
   const onMoveRef = useRef(onMove);
@@ -78,8 +97,9 @@ export default function Board({ node, orientation, arrows, onMove, redraw, visib
       lastMove: node.lastMove || undefined,
       check: chessAt(node.fen).inCheck() ? turn : false,
       movable: { color: 'both', dests: destsFor(node) },
+      highlight: { custom: new Map(mark ? [[mark.square, 'rv-' + mark.kind]] : []) },
     });
-  }, [node, orientation, redraw]);
+  }, [node, orientation, redraw, mark]);
 
   useEffect(() => {
     api.current.setAutoShapes(
@@ -95,6 +115,7 @@ export default function Board({ node, orientation, arrows, onMove, redraw, visib
   return (
     <div className="boardsize">
       <div ref={el} className="board" />
+      {mark && <Badge {...mark} orientation={orientation} />}
       {promotion && <PromotionPicker to={promotion.to} color={promotion.color} orientation={orientation} onPick={onPromote} />}
     </div>
   );
