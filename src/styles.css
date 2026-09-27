@@ -572,7 +572,18 @@ circle.pie-slice { stroke-width: 22; vector-effect: none; }
 .glyph.blunder { color: var(--rv-blunder); }
 .glyph.only { color: var(--rv-only); }
 .glyph.sacrifice { color: var(--rv-sacrifice); }
-.moves .mv.cur .glyph { color: inherit; }
+/* In the move list the marks are badges, and the move gets a light tint of the same color. */
+.moves .mv .glyph {
+  display: inline-grid; place-items: center; min-width: 19px; height: 19px; padding: 0 4px; margin-left: 6px;
+  border-radius: 10px; color: #fff; font-size: 11.5px; line-height: 1; vertical-align: 1px;
+}
+.moves .mv .glyph.blunder { background: var(--rv-blunder); }
+.moves .mv .glyph.only { background: var(--rv-only); }
+.moves .mv .glyph.sacrifice { background: var(--rv-sacrifice); }
+.moves .mv.cur .glyph { box-shadow: 0 0 0 2px #fff; }
+.moves .mv.rv-blunder:not(.cur) { background: color-mix(in oklab, var(--rv-blunder) 16%, transparent); }
+.moves .mv.rv-only:not(.cur) { background: color-mix(in oklab, var(--rv-only) 16%, transparent); }
+.moves .mv.rv-sacrifice:not(.cur) { background: color-mix(in oklab, var(--rv-sacrifice) 16%, transparent); }
 
 .lane {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px;

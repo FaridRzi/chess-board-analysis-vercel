@@ -7,6 +7,7 @@ function MoveBtn({ node, cur, onSelect, variant, mark }) {
   const cls = ['mv'];
   if (variant) cls.push('v');
   if (node === cur) cls.push('cur');
+  if (mark) cls.push('rv-' + mark);
   return (
     <button type="button" className={cls.join(' ')} onClick={() => onSelect(node)} aria-label={mark ? `${node.san}, ${KINDS[mark].label}` : undefined}>
       {node.san}
