@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { PRESETS, fetchPlayerGames, rangeFor, summarize } from '../lib/stats.js';
+import { ENDINGS, PRESETS, byOpponentRating, endingOf, fetchPlayerGames, openingName, rangeFor, summarize } from '../lib/stats.js';
+import { Pie, RatingBars, pct } from '../components/Charts.jsx';
 
 const TIME_CLASSES = ['bullet', 'blitz', 'rapid', 'daily'];
 const OUTCOMES = [
@@ -8,7 +9,6 @@ const OUTCOMES = [
   { key: 'loss', label: 'Lost' },
 ];
 
-const pct = (x) => (x == null ? '–' : Math.round(x * 100) + '%');
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const isoDay = (d) => {
   const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
@@ -41,58 +41,214 @@ function Tile({ label, value, white, black }) {
   );
 }
 
-/** One horizontal win/draw/loss bar, segments sized by share of games. */
-function OutcomeBar({ label, color, t }) {
-  const [tip, setTip] = useState(null);
+const WORD = { win: 'Won', draw: 'Drew', loss: 'Lost' };
+const RESULT_COLOR = { win: 'var(--win)', draw: 'var(--draw)', loss: 'var(--loss)' };
+// Methods within a result share its hue, stepped toward the surface; each method keeps its step whatever the filter.
+const SHADES = [100, 72, 52, 38, 28, 20, 14];
+const shade = (outcome, i) =>
+  i === 0 ? RESULT_COLOR[outcome] : `color-mix(in oklab, ${RESULT_COLOR[outcome]} ${SHADES[i]}%, var(--panel))`;
+const COLOR_OPTIONS = [
+  { key: 'all', label: 'All' },
+  { key: 'white', label: 'White' },
+  { key: 'black', label: 'Black' },
+];
+const RANKS = [
+  { key: 'games', label: 'Most played' },
+  { key: 'win', label: 'Most won' },
+  { key: 'draw', label: 'Most drawn' },
+  { key: 'loss', label: 'Most lost' },
+];
+
+function Toggles({ label, options, value, onChange, multi }) {
   return (
-    <div className="wdl-row">
-      <div className="wdl-name">
-        {color ? (
-          <span className="player" data-color={color}>
-            <span className="dot" /> {label}
-          </span>
-        ) : (
-          label
-        )}
-      </div>
-      <div className="wdl-bar" onMouseLeave={() => setTip(null)}>
-        {t.games === 0 ? (
-          <span className="wdl-empty">No games</span>
-        ) : (
-          OUTCOMES.map(({ key, label: word }) => {
-            const n = t[key];
-            if (!n) return null;
-            const share = n / t.games;
-            const text = `${word} ${n} of ${t.games} (${pct(share)})`;
-            return (
-              <div
-                key={key}
-                className={'seg ' + key}
-                style={{ flexGrow: n }}
-                tabIndex={0}
-                aria-label={`${label}: ${text}`}
-                onMouseEnter={() => setTip({ key, text })}
-                onFocus={() => setTip({ key, text })}
-                onBlur={() => setTip(null)}
-              >
-                {share >= 0.1 && <span>{n}</span>}
-              </div>
-            );
-          })
-        )}
-        {tip && (
-          <div className="wdl-tip" role="tooltip">
-            {tip.text}
-          </div>
-        )}
-      </div>
-      <div className="wdl-nums">
-        <span>{t.win}</span>
-        <span>{t.draw}</span>
-        <span>{t.loss}</span>
-        <strong>{pct(t.winRate)}</strong>
-      </div>
+    <div className="seg-control small" role="group" aria-label={label}>
+      {options.map((o) => {
+        const on = multi ? value.includes(o.key) : value === o.key;
+        const next = multi ? (on ? value.filter((k) => k !== o.key) : [...value, o.key]) : o.key;
+        return (
+          <button key={o.key} type="button" aria-pressed={on} onClick={() => onChange(next)}>
+            {o.label}
+          </button>
+        );
+      })}
     </div>
+  );
+}
+
+function Legend() {
+  return (
+    <div className="legend" aria-hidden="true">
+      {OUTCOMES.map((o) => (
+        <span key={o.key}>
+          <i className={'sw ' + o.key} /> {o.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ResultPies({ s }) {
+  const pie = (key, title, t) => (
+    <div className="pie-card" key={key}>
+      <h3>{title}</h3>
+      <Pie
+        label={`${title}: won, drew and lost`}
+        center={pct(t.winRate)}
+        sub="win rate"
+        slices={OUTCOMES.map((o) => ({ key: o.key, label: o.label, value: t[o.key], color: RESULT_COLOR[o.key] }))}
+      />
+    </div>
+  );
+  return (
+    <section className="card" aria-label="Results">
+      <div className="card-head">
+        <h2>Results</h2>
+      </div>
+      <div className="pies">
+        {pie('all', 'All games', s.all)}
+        {pie('white', 'As White', s.white)}
+        {pie('black', 'As Black', s.black)}
+      </div>
+    </section>
+  );
+}
+
+function RatingCard({ games }) {
+  const [color, setColor] = useState('all');
+  const buckets = useMemo(
+    () => byOpponentRating(color === 'all' ? games : games.filter((g) => g.color === color)),
+    [games, color]
+  );
+  return (
+    <section className="card" aria-label="Results by opponent rating">
+      <div className="card-head">
+        <h2>Results by opponent rating</h2>
+        <Toggles label="Color" options={COLOR_OPTIONS} value={color} onChange={setColor} />
+      </div>
+      <div className="chart-body">
+        <Legend />
+        {buckets.length ? <RatingBars buckets={buckets} /> : <p className="stats-note">No games with this color.</p>}
+        <p className="axis-note">Opponent rating in steps of 100 · hover or tap a bar for counts</p>
+      </div>
+    </section>
+  );
+}
+
+function EndingsCard({ games }) {
+  const [colors, setColors] = useState(['white', 'black']);
+  const [results, setResults] = useState(['win', 'loss']);
+  const picked = games.filter((g) => colors.includes(g.color) && results.includes(g.outcome));
+  const counts = {};
+  for (const g of picked) {
+    const k = endingOf(g);
+    counts[k] = (counts[k] || 0) + 1;
+  }
+  const slices = ENDINGS.filter((e) => results.includes(e.outcome)).map((e) => ({
+    key: e.outcome + ':' + e.code,
+    label: `${WORD[e.outcome]} · ${e.label}`,
+    value: counts[e.outcome + ':' + e.code] || 0,
+    color: shade(e.outcome, e.shade),
+  }));
+  return (
+    <section className="card" aria-label="How games ended">
+      <div className="card-head">
+        <h2>How games ended</h2>
+        <div className="filters">
+          <Toggles label="Color" multi options={COLOR_OPTIONS.slice(1)} value={colors} onChange={setColors} />
+          <Toggles label="Result" multi options={OUTCOMES} value={results} onChange={setResults} />
+        </div>
+      </div>
+      <div className="chart-body">
+        {!colors.length || !results.length ? (
+          <p className="stats-note">Pick at least one color and one result.</p>
+        ) : picked.length === 0 ? (
+          <p className="stats-note">No games match these filters.</p>
+        ) : (
+          <Pie label="How games ended" center={picked.length} sub={picked.length === 1 ? 'game' : 'games'} slices={slices} />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function OpeningsCard({ games }) {
+  const [color, setColor] = useState('all');
+  const [rank, setRank] = useState('games');
+  const rows = useMemo(() => {
+    const byName = new Map();
+    for (const g of games) {
+      if (color !== 'all' && g.color !== color) continue;
+      let row = byName.get(g.opening);
+      if (!row) byName.set(g.opening, (row = { name: g.opening, games: 0, win: 0, draw: 0, loss: 0 }));
+      row.games++;
+      row[g.outcome]++;
+    }
+    return [...byName.values()]
+      .filter((row) => row[rank] > 0)
+      .sort((a, b) => b[rank] - a[rank] || b.games - a.games || a.name.localeCompare(b.name))
+      .slice(0, 20);
+  }, [games, color, rank]);
+  const col = (key) => (key === rank ? 'num ranked' : 'num');
+
+  return (
+    <section className="card" aria-label="Openings">
+      <div className="card-head">
+        <h2>Top openings</h2>
+        <div className="filters">
+          <Toggles label="Color" options={COLOR_OPTIONS} value={color} onChange={setColor} />
+          <Toggles label="Rank by" options={RANKS} value={rank} onChange={setRank} />
+        </div>
+      </div>
+      {rows.length === 0 ? (
+        <p className="stats-note chart-body">No games match these filters.</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="openings">
+            <thead>
+              <tr>
+                <th className="num rank">#</th>
+                <th className="oname">Opening</th>
+                <th className={col('games')}>Games</th>
+                <th className={col('win')}>
+                  <span className="long">Won</span>
+                  <abbr className="short" title="Won">W</abbr>
+                </th>
+                <th className={col('draw')}>
+                  <span className="long">Drew</span>
+                  <abbr className="short" title="Drew">D</abbr>
+                </th>
+                <th className={col('loss')}>
+                  <span className="long">Lost</span>
+                  <abbr className="short" title="Lost">L</abbr>
+                </th>
+                <th className="num">Win %</th>
+                <th className="barcol">
+                  <span className="sr-only">Share won, drew, lost</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={row.name}>
+                  <td className="num muted rank">{i + 1}</td>
+                  <td className="oname">{row.name}</td>
+                  <td className={col('games')}>{row.games}</td>
+                  <td className={col('win')}>{row.win}</td>
+                  <td className={col('draw')}>{row.draw}</td>
+                  <td className={col('loss')}>{row.loss}</td>
+                  <td className="num">{pct(row.win / row.games)}</td>
+                  <td className="barcol" aria-hidden="true">
+                    <div className="minibar">
+                      {OUTCOMES.map((o) => (row[o.key] ? <i key={o.key} className={'seg ' + o.key} style={{ flexGrow: row[o.key] }} /> : null))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -231,33 +387,10 @@ export default function StatsPage({ active }) {
                 <Tile label="Win rate" value={pct(s.all.winRate)} white={pct(s.white.winRate)} black={pct(s.black.winRate)} />
               </div>
 
-              <section className="card wdl" aria-label="Results by color">
-                <div className="card-head">
-                  <h2>Results by color</h2>
-                  <div className="legend" aria-hidden="true">
-                    {OUTCOMES.map((o) => (
-                      <span key={o.key}>
-                        <i className={'sw ' + o.key} /> {o.label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="wdl-body">
-                  <div className="wdl-row wdl-cols" aria-hidden="true">
-                    <div />
-                    <div />
-                    <div className="wdl-nums">
-                      <span>W</span>
-                      <span>D</span>
-                      <span>L</span>
-                      <span>Win %</span>
-                    </div>
-                  </div>
-                  <OutcomeBar label="All" t={s.all} />
-                  <OutcomeBar label="White" color="white" t={s.white} />
-                  <OutcomeBar label="Black" color="black" t={s.black} />
-                </div>
-              </section>
+              <ResultPies s={s} />
+              <RatingCard games={shown} />
+              <EndingsCard games={shown} />
+              <OpeningsCard games={shown} />
               <p className="foot">Win rate is wins ÷ games; draws count as not won. Dates use your local time.</p>
             </>
           )}

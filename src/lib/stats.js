@@ -115,6 +115,7 @@ function toRecord(g, color) {
     rated: g.rated,
     accuracy: g.accuracies ? g.accuracies[color] : null,
     eco: g.eco || null,
+    opening: openingName(g.eco),
   };
 }
 
@@ -132,4 +133,97 @@ export function summarize(games) {
     white: tally(games.filter((g) => g.color === 'white')),
     black: tally(games.filter((g) => g.color === 'black')),
   };
+}
+
+// ---------- how games ended ----------
+
+// Won games are described by the opponent's code, lost and drawn games by the player's own.
+const METHODS = {
+  win: [
+    ['resigned', 'Resignation'],
+    ['checkmated', 'Checkmate'],
+    ['timeout', 'Timeout'],
+    ['abandoned', 'Abandoned'],
+  ],
+  loss: [
+    ['resigned', 'Resignation'],
+    ['checkmated', 'Checkmate'],
+    ['timeout', 'Timeout'],
+    ['abandoned', 'Abandoned'],
+  ],
+  draw: [
+    ['agreed', 'Agreement'],
+    ['repetition', 'Repetition'],
+    ['stalemate', 'Stalemate'],
+    ['insufficient', 'Insufficient material'],
+    ['timevsinsufficient', 'Timeout vs insufficient material'],
+    ['50move', '50-move rule'],
+  ],
+};
+
+/** Every possible (outcome, method) slice, in display order. */
+export const ENDINGS = ['win', 'draw', 'loss'].flatMap((outcome) =>
+  [...METHODS[outcome], ['other', 'Other']].map(([code, label], i) => ({ outcome, code, label, shade: i }))
+);
+
+export function endingOf(g) {
+  const code = g.outcome === 'win' ? g.oppResult : g.result;
+  const known = METHODS[g.outcome].some(([c]) => c === code);
+  return g.outcome + ':' + (known ? code : 'other');
+}
+
+// ---------- openings ----------
+
+const FAMILY_END = /^(Opening|Defense|Game|Gambit|Attack|System|Countergambit)$/;
+const VARIATION_END = /^(Variation|Line|Attack|Defense|System|Gambit|Countergambit|Formation|Opening|Game)$/;
+const TIDY = [
+  [/\bBishops\b/g, 'Bishop’s'],
+  [/\bKings\b/g, 'King’s'],
+  [/\bQueens\b/g, 'Queen’s'],
+  [/\b(Alekhine|Owen|Bird|Petrov|Anderssen|Ware|Amar|Clemenz|Mieses|Barnes|Durkin|Sokolsky)s\b/g, '$1’s'],
+  [/\bCaro Kann\b/g, 'Caro-Kann'],
+  [/\bNimzo (Indian|Larsen)\b/g, 'Nimzo-$1'],
+  [/\bNimzowitsch Larsen\b/g, 'Nimzowitsch-Larsen'],
+  [/\bReti\b/g, 'Réti'],
+  [/\bAnglo Indian\b/g, 'Anglo-Indian'],
+  [/\bGruenfeld\b/g, 'Grünfeld'],
+];
+const tidy = (words) => TIDY.reduce((s, [re, to]) => s.replace(re, to), words.join(' '));
+
+/**
+ * "Opening: Main variation" from Chess.com's opening URL, e.g.
+ * .../openings/Queens-Gambit-Declined-Exchange-Positional-Line-5...c6 → "Queen’s Gambit Declined: Exchange Positional Line".
+ */
+export function openingName(ecoUrl) {
+  let slug = decodeURIComponent((ecoUrl || '').split('/openings/')[1] || '');
+  slug = slug.replace(/with-1-([a-h][1-8])/, 'with 1.$1').split(/-\d+\.|\.\.\./)[0];
+  const words = slug.split('-').filter(Boolean);
+  if (!words.length || words[0] === 'Undefined') return 'Unknown opening';
+  let i = words.findIndex((w) => FAMILY_END.test(w));
+  if (i < 0) i = words.length - 1;
+  if (/^(Declined|Accepted|Refused)$/.test(words[i + 1] || '')) i++;
+  const family = tidy(words.slice(0, i + 1));
+  const rest = words.slice(i + 1);
+  if (!rest.length) return family;
+  if (/^with /.test(rest[0])) return family + ' ' + rest.join(' ');
+  const j = rest.findIndex((w) => VARIATION_END.test(w));
+  return family + ': ' + tidy(j < 0 ? rest : rest.slice(0, j + 1));
+}
+
+// ---------- rating buckets ----------
+
+/** Games grouped by opponent rating in 100-point steps, lowest first, with empty steps kept. */
+export function byOpponentRating(games) {
+  const rated = games.filter((g) => Number.isFinite(g.oppRating));
+  if (!rated.length) return [];
+  const lo = Math.floor(Math.min(...rated.map((g) => g.oppRating)) / 100) * 100;
+  const hi = Math.floor(Math.max(...rated.map((g) => g.oppRating)) / 100) * 100;
+  const buckets = [];
+  for (let r = lo; r <= hi; r += 100) buckets.push({ from: r, to: r + 99, games: 0, win: 0, draw: 0, loss: 0 });
+  for (const g of rated) {
+    const b = buckets[Math.floor(g.oppRating / 100) - lo / 100];
+    b.games++;
+    b[g.outcome]++;
+  }
+  return buckets;
 }
