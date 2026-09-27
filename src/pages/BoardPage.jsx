@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Chess, validateFen } from 'chess.js';
 import Board from '../components/Board.jsx';
+import BoardEditor from '../components/BoardEditor.jsx';
 import EnginePanel from '../components/EnginePanel.jsx';
 import MoveList from '../components/MoveList.jsx';
 import { EvalBar, FenRow, HowTo, NavBar, Player } from '../components/Bits.jsx';
@@ -53,10 +54,11 @@ export default function BoardPage({ active }) {
   const [source, setSource] = useState('');
   const [loading, setLoading] = useState(false);
   const [promotion, setPromotion] = useState(null); // { from, to, color } while the user picks a piece
+  const [editing, setEditing] = useState(false); // board setup mode
 
   const { tree, cur, headers } = game;
   const locked = headers.Result === '*'; // game still in progress
-  const engineOn = engineWanted && !locked && active;
+  const engineOn = engineWanted && !locked && active && !editing;
   const engine = useEngine({ fen: cur.fen, enabled: engineOn, depth });
 
   const goTo = useCallback((node) => {
@@ -167,19 +169,19 @@ export default function BoardPage({ active }) {
   const onPlay = (pv, upto = 0) => goTo(tree.playLine(cur, pv, upto));
 
   useEffect(() => {
-    if (!active || promotion) return;
+    if (!active || promotion || editing) return;
     const onKey = (e) => {
       if (e.target.closest && e.target.closest('textarea, input, select')) return;
       if (e.key === 'ArrowLeft') goTo(cur.parent);
       else if (e.key === 'ArrowRight') goTo(nextOf(cur));
-      else if (e.key === 'Home') goTo(tree.root);
-      else if (e.key === 'End') goTo(lastOf(cur));
+      else if (e.key === 'Home' || e.key === 'ArrowUp') goTo(tree.root);
+      else if (e.key === 'End' || e.key === 'ArrowDown') goTo(lastOf(cur));
       else return;
       e.preventDefault();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [cur, tree, goTo, active, promotion]);
+  }, [cur, tree, goTo, active, promotion, editing]);
 
   // Eval bar and arrows
   const c = chessAt(cur.fen);
@@ -229,76 +231,91 @@ export default function BoardPage({ active }) {
         <Notice notice={game.notice} />
       </header>
 
-      <main className="layout">
-        <section className="boardcol" aria-label="Board">
-          {orientation === 'white' ? black : white}
-          <div className="boardrow">
-            <EvalBar share={share} flipped={orientation === 'black'} />
-            <div className="boardwrap">
-              <Board
-                node={cur}
-                orientation={orientation}
-                arrows={arrows}
-                onMove={onBoardMove}
-                redraw={version}
-                visible={active}
-                promotion={promotion}
-                onPromote={onPromote}
-              />
-            </div>
-          </div>
-          {orientation === 'white' ? white : black}
-          <NavBar
-            atStart={!cur.parent}
-            atEnd={!nextOf(cur)}
-            onFirst={() => goTo(tree.root)}
-            onPrev={() => goTo(cur.parent)}
-            onNext={() => goTo(nextOf(cur))}
-            onLast={() => goTo(lastOf(cur))}
-            onFlip={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}
-          />
-          <div className="status">
-            <span>{turnOf(cur.fen) === 'white' ? 'White' : 'Black'} to move</span>
-            <span>Drag a piece to explore</span>
-          </div>
-        </section>
-
-        <aside className="side">
-          <EnginePanel
-            node={cur}
-            engine={engine}
-            engineOn={engineOn}
-            locked={locked}
-            depth={depth}
-            onToggle={setEngineWanted}
-            onDepth={setDepth}
-            onPlay={onPlay}
-          />
-
-          <section className="card" aria-label="Moves">
-            <div className="gamehead">
-              <strong>{game.label}</strong>
-              <span>{meta.join(' · ')}</span>
-            </div>
-            {!cur.main && (
-              <div className="explore-bar">
-                <span>You’re in your own line</span>
-                <span className="explore-actions">
-                  <button type="button" onClick={() => goTo(tree.deleteLineAt(cur))}>
-                    Delete line
-                  </button>
-                  <button type="button" onClick={() => goTo(mainAncestor(cur))}>
-                    Back to game
-                  </button>
-                </span>
+      {editing ? (
+        <BoardEditor
+          initialFen={cur.fen}
+          initialOrientation={orientation}
+          onCancel={() => setEditing(false)}
+          onDone={(fen, o) => {
+            setEditing(false);
+            setOrientation(o);
+            loadGame({}, fen, [], 'Your position');
+          }}
+        />
+      ) : (
+        <main className="layout">
+          <section className="boardcol" aria-label="Board">
+            {orientation === 'white' ? black : white}
+            <div className="boardrow">
+              <EvalBar share={share} flipped={orientation === 'black'} />
+              <div className="boardwrap">
+                <Board
+                  node={cur}
+                  orientation={orientation}
+                  arrows={arrows}
+                  onMove={onBoardMove}
+                  redraw={version}
+                  visible={active}
+                  promotion={promotion}
+                  onPromote={onPromote}
+                />
               </div>
-            )}
-            <MoveList root={tree.root} cur={cur} result={headers.Result} onSelect={goTo} version={version} />
-            <FenRow fen={cur.fen} />
+            </div>
+            {orientation === 'white' ? white : black}
+            <NavBar
+              atStart={!cur.parent}
+              atEnd={!nextOf(cur)}
+              onFirst={() => goTo(tree.root)}
+              onPrev={() => goTo(cur.parent)}
+              onNext={() => goTo(nextOf(cur))}
+              onLast={() => goTo(lastOf(cur))}
+              onFlip={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}
+            />
+            <div className="status">
+              <span>{turnOf(cur.fen) === 'white' ? 'White' : 'Black'} to move</span>
+              <button type="button" className="linkish" onClick={() => setEditing(true)}>
+                Set up position
+              </button>
+            </div>
           </section>
-          <p className="foot">Tap an engine line, or any move in it, to see it on the board. Drag the piece that just moved to change that move.</p>
-        </aside>
-      </main>
+
+          <aside className="side">
+            <EnginePanel
+              node={cur}
+              engine={engine}
+              engineOn={engineOn}
+              locked={locked}
+              depth={depth}
+              onToggle={setEngineWanted}
+              onDepth={setDepth}
+              onPlay={onPlay}
+            />
+
+            <section className="card" aria-label="Moves">
+              <div className="gamehead">
+                <strong>{game.label}</strong>
+                <span>{meta.join(' · ')}</span>
+              </div>
+              {!cur.main && (
+                <div className="explore-bar">
+                  <span>You’re in your own line</span>
+                  <span className="explore-actions">
+                    <button type="button" onClick={() => goTo(tree.deleteLineAt(cur))}>
+                      Delete line
+                    </button>
+                    <button type="button" onClick={() => goTo(mainAncestor(cur))}>
+                      Back to game
+                    </button>
+                  </span>
+                </div>
+              )}
+              <MoveList root={tree.root} cur={cur} result={headers.Result} onSelect={goTo} version={version} />
+              <FenRow fen={cur.fen} />
+            </section>
+            <p className="foot">Tap an engine line, or any move in it, to see it on the board. Drag the piece that just moved to change that move.</p>
+          </aside>
+        </main>
+      )}
     </div>
   );
 }

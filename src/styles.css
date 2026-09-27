@@ -506,3 +506,35 @@ circle.pie-slice { stroke-width: 22; vector-effect: none; }
 .cg-wrap.promo button:hover, .cg-wrap.promo button:focus-visible { border-radius: 8%; background: radial-gradient(#ffffff 20%, #e0a93a 90%); }
 .cg-wrap.promo piece { position: static; display: block; width: 100%; height: 100%; transform: scale(.82); transition: transform .12s; }
 .cg-wrap.promo button:hover piece { transform: scale(1); }
+
+/* board setup */
+.linkish { border: 0; background: none; padding: 4px 0; color: var(--accent); font-size: 13px; font-weight: 600; }
+.linkish:hover { text-decoration: underline; }
+.spare-row {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 0; height: auto; overflow: visible;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+}
+.spare-row button {
+  aspect-ratio: 1; border: 0; background: none; padding: 0; border-radius: 6px; display: grid; place-items: center;
+  touch-action: none;
+}
+.spare-row button:hover { background: var(--panel-2); }
+.spare-row button.on { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.spare-row piece { position: static; display: block; width: 88%; height: 88%; cursor: grab; }
+.spare-row svg { width: 44%; height: 44%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.spare-row .tool:first-child svg { fill: currentColor; stroke: none; }
+.boardsize.placing cg-board { cursor: crosshair; }
+.editor .boardcol { gap: 8px; }
+.editor-hint { margin: 0; color: var(--muted); font-size: 13px; }
+.editor-body { padding: 12px; display: flex; flex-direction: column; gap: 14px; }
+.castles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 14px; }
+.castles label { display: flex; align-items: center; gap: 7px; min-height: 30px; }
+.castles label.off { color: var(--muted); }
+.castles input { width: 17px; height: 17px; accent-color: var(--accent); }
+.editor-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.editor-actions button, .editor-foot button:not(.btn-primary) {
+  border: 1px solid var(--line); background: var(--panel-2); border-radius: 7px; padding: 6px 12px; min-height: 36px; font-size: 14px;
+}
+.field input.mono { font-family: var(--mono); font-size: 12.5px; }
+.editor-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+.editor-foot .btn-primary { min-height: 36px; }
