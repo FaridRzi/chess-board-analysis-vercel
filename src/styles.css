@@ -200,6 +200,8 @@ button { cursor: pointer; }
 .player .dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid var(--muted); flex: none; }
 .player[data-color="white"] .dot { background: #f5f5f2; }
 .player[data-color="black"] .dot { background: #1c1e22; }
+.player .pcolor { color: var(--muted); font-size: 13px; flex: none; }
+.player .pcolor:has(+ .pname)::after { content: " ·"; }
 .player .pname { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .player .elo { color: var(--muted); font-family: var(--mono); font-size: 12.5px; }
 
@@ -592,7 +594,9 @@ circle.pie-slice { stroke-width: 22; vector-effect: none; }
 .lane-row { display: flex; align-items: center; gap: 12px; }
 .lane-player { flex: 1 1 0; min-width: 0; }
 .lane-player .player { padding-left: 0; min-height: 22px; }
-.lane-player.right .player { justify-content: flex-end; }
+.lane-player .player.right { flex-direction: row-reverse; }
+.lane-player .player.right .pcolor:has(+ .pname)::after { content: none; }
+.lane-player .player.right .pcolor:has(+ .pname)::before { content: "· "; }
 .lane-metrics { display: flex; gap: 6px 18px; flex-wrap: wrap; justify-content: center; }
 .lane-metric { display: grid; grid-template-columns: 28px auto 28px; align-items: center; gap: 6px; font-size: 13px; }
 .lane-label { color: var(--muted); white-space: nowrap; font-size: 12.5px; }
@@ -631,3 +635,12 @@ cg-board square.rv-sacrifice { background-color: rgba(19, 160, 109, .38); }
 .tag.rv.blunder { background: var(--rv-blunder); }
 .tag.rv.only { background: var(--rv-only); }
 .tag.rv.sacrifice { background: var(--rv-sacrifice); }
+
+/* games per day */
+.dbar { position: relative; flex: 1 1 0; min-width: 0; max-width: 40px; margin: 0 auto; display: flex; flex-direction: column-reverse; cursor: default; outline-offset: 1px; }
+.dbar:hover, .dbar:focus-visible { background: color-mix(in oklab, var(--ink) 5%, transparent); }
+.dbar .seg { flex: none; min-height: 2px; border-radius: 0; }
+.dbar .seg + .seg { border-bottom: 1px solid var(--panel); }
+.dbar .seg:last-child { border-radius: 3px 3px 0 0; }
+.rbars-x > .dlabel { max-width: 40px; overflow: visible; }
+.rbars-x > .dlabel span { font-size: 11px; color: var(--muted); }

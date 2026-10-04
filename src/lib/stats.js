@@ -244,3 +244,26 @@ export function byOpponentRating(games) {
   }
   return buckets;
 }
+
+// ---------- per day ----------
+
+const dayKey = (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+
+/** One entry per local calendar day from fromMs to toMs (empty days included), oldest first. */
+export function byDay(games, fromMs, toMs) {
+  const days = [];
+  const index = new Map();
+  const d = new Date(fromMs);
+  d.setHours(0, 0, 0, 0);
+  for (; d.getTime() <= toMs; d.setDate(d.getDate() + 1)) {
+    index.set(dayKey(d), days.length);
+    days.push({ key: dayKey(d), day: d.getTime(), games: 0, win: 0, draw: 0, loss: 0 });
+  }
+  for (const g of games) {
+    const i = index.get(dayKey(new Date(g.end)));
+    if (i == null) continue;
+    days[i].games++;
+    days[i][g.outcome]++;
+  }
+  return days;
+}

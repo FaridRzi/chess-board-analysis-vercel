@@ -12,31 +12,12 @@ import { useEngine } from '../useEngine.js';
 import { GameTree, lastOf, mainAncestor, nextOf } from '../lib/tree.js';
 import { parseGameText, looksLikeFen, labelFor } from '../lib/pgn.js';
 import { parseChessComLink, fetchChessComGame } from '../lib/chesscom.js';
-import { chessAt, formatTimeControl, turnOf, winShare } from '../lib/chess.js';
+import { START_FEN, chessAt, formatTimeControl, turnOf, winShare } from '../lib/chess.js';
 
-const SAMPLE_PGN = `[Event "Opera Game"]
-[Site "Paris"]
-[Date "1858.11.02"]
-[White "Paul Morphy"]
-[Black "Duke Karl / Count Isouard"]
-[Result "1-0"]
-
-1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. dxe5 Bxf3 5. Qxf3 dxe5 6. Bc4 Nf6 7. Qb3 Qe7
-8. Nc3 c6 9. Bg5 b5 10. Nxb5 cxb5 11. Bxb5+ Nbd7 12. O-O-O Rd8 13. Rxd7 Rxd7
-14. Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8# 1-0`;
-
+// The page opens on a fresh board: the starting position, no moves yet.
 function initialGame() {
-  const g = parseGameText(SAMPLE_PGN);
-  const tree = new GameTree(g.startFen, g.moves);
-  let node = tree.root;
-  for (let i = 0; i < 18 && nextOf(node); i++) node = nextOf(node);
-  return {
-    tree,
-    cur: node,
-    headers: { ...g.headers, Result: g.result },
-    label: 'Sample · Morphy’s Opera Game, 1858',
-    notice: null,
-  };
+  const tree = new GameTree(START_FEN, []);
+  return { tree, cur: tree.root, headers: {}, label: 'New game', notice: null };
 }
 
 function Notice({ notice }) {
@@ -306,8 +287,8 @@ export default function BoardPage({ active }) {
       {!editing && (
         <ReviewLane
           review={review}
-          white={headers.White && headers.White !== '?' ? headers.White : 'White'}
-          black={headers.Black && headers.Black !== '?' ? headers.Black : 'Black'}
+          white={headers.White}
+          black={headers.Black}
           onJump={jumpToMark}
         />
       )}

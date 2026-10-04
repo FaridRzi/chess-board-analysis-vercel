@@ -1,4 +1,5 @@
 import { KINDS } from '../lib/review.js';
+import { Player } from './Bits.jsx';
 
 function Count({ value, color, kind, label, onJump }) {
   if (value == null) return <span className="lane-val muted">–</span>;
@@ -23,10 +24,7 @@ export default function ReviewLane({ review, white, black, onJump }) {
     <section className="lane" aria-label="Game review">
       <div className="lane-row">
         <div className="lane-player">
-          <span className="player" data-color="white">
-            <span className="dot" />
-            <span className="pname">{white}</span>
-          </span>
+          <Player color="white" name={white} />
         </div>
         <div className="lane-metrics">
           <div className="lane-metric">
@@ -44,11 +42,8 @@ export default function ReviewLane({ review, white, black, onJump }) {
             </div>
           ))}
         </div>
-        <div className="lane-player right">
-          <span className="player" data-color="black">
-            <span className="pname">{black}</span>
-            <span className="dot" />
-          </span>
+        <div className="lane-player">
+          <Player color="black" name={black} className="right" />
         </div>
       </div>
       {running && (

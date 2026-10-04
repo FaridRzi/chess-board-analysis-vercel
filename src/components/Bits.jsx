@@ -1,9 +1,11 @@
-export function Player({ color, name, elo }) {
-  const shown = name && name !== '?' ? name : color === 'white' ? 'White' : 'Black';
+/** "● White · username 1850" — the color is always spelled out, the name and rating when the game has them. */
+export function Player({ color, name, elo, className = '' }) {
+  const named = name && name !== '?';
   return (
-    <div className="player" data-color={color}>
+    <div className={'player ' + className} data-color={color}>
       <span className="dot" />
-      <span className="pname">{shown}</span>
+      <span className="pcolor">{color === 'white' ? 'White' : 'Black'}</span>
+      {named && <span className="pname">{name}</span>}
       {elo && elo !== '?' && <span className="elo">{elo}</span>}
     </div>
   );

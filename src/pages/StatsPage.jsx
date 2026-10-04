@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { BASE_TYPES, ENDINGS, PRESETS, byOpponentRating, endingOf, fetchPlayerGames, openingName, rangeFor, summarize, typeLabel } from '../lib/stats.js';
-import { Pie, RatingBars, pct } from '../components/Charts.jsx';
+import { BASE_TYPES, ENDINGS, PRESETS, byDay, byOpponentRating, endingOf, fetchPlayerGames, openingName, rangeFor, summarize, typeLabel } from '../lib/stats.js';
+import { DailyBars, Pie, RatingBars, pct } from '../components/Charts.jsx';
 
 const OUTCOMES = [
   { key: 'win', label: 'Won' },
@@ -106,6 +106,27 @@ function ResultPies({ s }) {
         {pie('all', 'All games', s.all)}
         {pie('white', 'As White', s.white)}
         {pie('black', 'As Black', s.black)}
+      </div>
+    </section>
+  );
+}
+
+function DailyCard({ games, fromMs, toMs }) {
+  const [color, setColor] = useState('all');
+  const days = useMemo(
+    () => byDay(color === 'all' ? games : games.filter((g) => g.color === color), fromMs, toMs),
+    [games, color, fromMs, toMs]
+  );
+  return (
+    <section className="card" aria-label="Games per day">
+      <div className="card-head">
+        <h2>Games per day</h2>
+        <Toggles label="Color" options={COLOR_OPTIONS} value={color} onChange={setColor} />
+      </div>
+      <div className="chart-body">
+        <Legend />
+        <DailyBars days={days} />
+        <p className="axis-note">Bar height is games played that day · hover or tap a day for each result’s share</p>
       </div>
     </section>
   );
@@ -390,6 +411,7 @@ export default function StatsPage({ active }) {
                   </div>
 
                   <ResultPies s={s} />
+                  <DailyCard games={shown} fromMs={status.fromMs} toMs={status.toMs} />
                   <RatingCard games={shown} />
                   <EndingsCard games={shown} />
                   <OpeningsCard games={shown} />

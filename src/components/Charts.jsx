@@ -173,3 +173,88 @@ export function RatingBars({ buckets }) {
     </div>
   );
 }
+
+/** A round step (1, 2, 5 × 10ⁿ) so a count axis gets about four gridlines. */
+function niceStep(max) {
+  const raw = Math.max(1, max / 4);
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  return [1, 2, 5, 10].map((m) => m * mag).find((s) => s >= raw);
+}
+
+const dayLabel = (ms) => new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+const dayLong = (ms) => new Date(ms).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+/** Games per day as stacked won/drew/lost columns; hovering a day shows each result's count and share. */
+export function DailyBars({ days }) {
+  const [tip, bind] = useTip();
+  const plot = useRef(null);
+  const [width, setWidth] = useState(600);
+  useEffect(() => {
+    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
+    ro.observe(plot.current);
+    return () => ro.disconnect();
+  }, []);
+
+  const max = Math.max(1, ...days.map((d) => d.games));
+  const step = niceStep(max);
+  const top = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = 0; v <= top; v += step) ticks.push(v);
+  const stride = Math.max(1, Math.ceil((days.length * 58) / Math.max(width, 1)));
+  const gap = days.length > 60 ? 1 : 3;
+  const focusable = days.length <= 62; // keyboard stops on every day only when there aren't too many
+
+  const lines = (d) =>
+    d.games === 0
+      ? [<strong>{dayLong(d.day)}</strong>, 'No games']
+      : [
+          <strong>
+            {dayLong(d.day)} · {d.games} game{d.games === 1 ? '' : 's'}
+          </strong>,
+          ...PARTS.map((p) => (
+            <span className="tip-row on">
+              <i className={'sw ' + p.key} /> {p.label} {d[p.key]} ({pct(d[p.key] / d.games)})
+            </span>
+          )),
+        ];
+
+  return (
+    <div className="rbars">
+      <div className="rbars-y" aria-hidden="true">
+        {ticks.map((v) => (
+          <span key={v} style={{ bottom: (v / top) * 100 + '%' }}>
+            {v}
+          </span>
+        ))}
+      </div>
+      <div className="rbars-main">
+        <div className="rbars-plot" ref={plot} style={{ gap }}>
+          {ticks.map((v) => (
+            <i key={v} className="grid" style={{ bottom: (v / top) * 100 + '%' }} />
+          ))}
+          {days.map((d) => (
+            <div
+              key={d.key}
+              className={'dbar' + (tip && tip.key !== d.key ? ' dim' : '')}
+              tabIndex={focusable ? 0 : undefined}
+              aria-label={`${dayLong(d.day)}: ${d.games} games, ${d.win} won, ${d.draw} drawn, ${d.loss} lost`}
+              {...bind(d.key, lines(d))}
+            >
+              {PARTS.map((p) =>
+                d[p.key] ? <div key={p.key} className={'seg ' + p.key} style={{ height: (d[p.key] / top) * 100 + '%' }} /> : null
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="rbars-x" aria-hidden="true" style={{ gap }}>
+          {days.map((d, i) => (
+            <div key={d.key} className="dlabel">
+              {i % stride === 0 && <span>{dayLabel(d.day)}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+      <Tip tip={tip} />
+    </div>
+  );
+}
