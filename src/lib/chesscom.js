@@ -20,9 +20,13 @@ export function decodeTcn(str) {
   return moves;
 }
 
-/** Only a bare link counts: PGNs also contain [Link "…"] / [Site "…"] headers. */
+/**
+ * A Chess.com game link, bare or inside a share message from the app
+ * ("Check out this #chess game: A vs B - https://www.chess.com/game/live/123", in any language).
+ * PGNs also carry the link in [Link "…"] / [Site "…"] headers, so text with PGN headers is never a link.
+ */
 export function parseChessComLink(text) {
-  if (/\s/.test(text)) return null;
+  if (/^\s*\[\w+\s+"/m.test(text)) return null;
   const m = text.match(/chess\.com\/(?:analysis\/)?game\/(daily|live)?\/?(\d+)/i);
   if (!m) return null;
   return { kind: (m[1] || 'live').toLowerCase(), id: m[2] };
