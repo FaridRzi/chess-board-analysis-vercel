@@ -29,7 +29,7 @@ function Notice({ notice }) {
   );
 }
 
-export default function BoardPage({ active }) {
+export default function BoardPage({ active, handoff }) {
   const [game, setGame] = useState(initialGame);
   const [version, setVersion] = useState(0); // bumps when the tree changes or the board must redraw
   const [orientation, setOrientation] = useState('white');
@@ -89,6 +89,14 @@ export default function BoardPage({ active }) {
     setCollapsed(true);
     sourceBox.current && sourceBox.current.blur();
   };
+
+  // A line sent over from the opening explorer: load it and show its last move.
+  useEffect(() => {
+    if (!handoff) return;
+    const g = parseGameText(handoff.sans.join(' '));
+    loadGame({}, g.startFen, g.moves, handoff.name, null, g.moves.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handoff]);
 
   const clearSource = () => {
     setSource('');

@@ -47,6 +47,12 @@ export class GameTree {
     const r = tryMove(c, { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
     return r ? this.addChild(node, r, c.fen()) : null;
   }
+  /** Plays a SAN move from `node` and returns the resulting node (or null if illegal). */
+  playSan(node, san) {
+    const c = chessAt(node.fen);
+    const r = tryMove(c, san);
+    return r ? this.addChild(node, r, c.fen()) : null;
+  }
   /** Plays a line of UCI moves from `node`; returns the node after move `upto` (0-based). */
   playLine(node, pv, upto) {
     let n = node;

@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import BoardPage from './pages/BoardPage.jsx';
 import StatsPage from './pages/StatsPage.jsx';
+import OpeningsPage from './pages/OpeningsPage.jsx';
 
 const PAGES = [
   { id: 'board', hash: '#/', label: 'Game analysis', blurb: 'Stockfish 19 in your browser · top 5 moves' },
   { id: 'stats', hash: '#/stats', label: 'Player stats', blurb: 'Wins, draws and losses from Chess.com' },
+  { id: 'openings', hash: '#/openings', label: 'Opening explorer', blurb: 'Browse openings and their names' },
 ];
 
-const pageFromHash = () => (location.hash.startsWith('#/stats') ? 'stats' : 'board');
+const pageFromHash = () => (location.hash.startsWith('#/stats') ? 'stats' : location.hash.startsWith('#/openings') ? 'openings' : 'board');
 
 export default function App() {
   const [page, setPage] = useState(pageFromHash);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [handoff, setHandoff] = useState(null); // a line sent from the opening explorer to the board page
   const menuBtn = useRef(null);
   const drawer = useRef(null);
 
@@ -73,8 +76,15 @@ export default function App() {
         ))}
       </nav>
 
-      <BoardPage active={page === 'board'} />
+      <BoardPage active={page === 'board'} handoff={handoff} />
       <StatsPage active={page === 'stats'} />
+      <OpeningsPage
+        active={page === 'openings'}
+        onAnalyze={(sans, name) => {
+          setHandoff({ sans, name });
+          location.hash = '#/';
+        }}
+      />
     </div>
   );
 }
