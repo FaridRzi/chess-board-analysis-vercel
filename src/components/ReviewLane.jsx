@@ -1,5 +1,5 @@
 import { KINDS } from '../lib/review.js';
-import { Player } from './Bits.jsx';
+import { BookIcon, Player } from './Bits.jsx';
 
 function Count({ value, color, kind, label, onJump }) {
   if (value == null) return <span className="lane-val muted">–</span>;
@@ -12,8 +12,8 @@ function Count({ value, color, kind, label, onJump }) {
 }
 
 /** Thin strip comparing White and Black: accuracy, then blunders, only moves and sacrifices. */
-export default function ReviewLane({ review, white, black, onJump }) {
-  if (review.status === 'idle') return null;
+export default function ReviewLane({ review, book, white, black, onJump, onBook }) {
+  if (review.status === 'idle' && !book) return null;
   const s = review.summary;
   const acc = (side) => (s && s[side].accuracy != null ? Math.round(s[side].accuracy) : null);
   const [aw, ab] = [acc('white'), acc('black')];
@@ -32,6 +32,15 @@ export default function ReviewLane({ review, white, black, onJump }) {
             <span className="lane-label">Accuracy</span>
             <span className={'lane-val' + (ab != null && ab >= (aw ?? 0) ? ' lead' : '')}>{ab ?? '–'}</span>
           </div>
+          {book && (
+            <div className="lane-metric">
+              <span className="lane-val">{book.white}</span>
+              <button type="button" className="lane-label lane-book" title="Go to the last book move" onClick={onBook}>
+                <BookIcon /> Book moves
+              </button>
+              <span className="lane-val">{book.black}</span>
+            </div>
+          )}
           {Object.entries(KINDS).map(([kind, k]) => (
             <div key={kind} className="lane-metric">
               <Count value={s && s.white[kind]} color="white" kind={kind} label={k.label} onJump={onJump} />

@@ -15,6 +15,7 @@ export default function App() {
   const [page, setPage] = useState(pageFromHash);
   const [menuOpen, setMenuOpen] = useState(false);
   const [handoff, setHandoff] = useState(null); // a line sent from the opening explorer to the board page
+  const [explorerLine, setExplorerLine] = useState(null); // and one sent the other way
   const menuBtn = useRef(null);
   const drawer = useRef(null);
 
@@ -76,10 +77,18 @@ export default function App() {
         ))}
       </nav>
 
-      <BoardPage active={page === 'board'} handoff={handoff} />
+      <BoardPage
+        active={page === 'board'}
+        handoff={handoff}
+        onExplore={(sans) => {
+          setExplorerLine({ sans });
+          location.hash = '#/openings';
+        }}
+      />
       <StatsPage active={page === 'stats'} />
       <OpeningsPage
         active={page === 'openings'}
+        line={explorerLine}
         onAnalyze={(sans, name) => {
           setHandoff({ sans, name });
           location.hash = '#/';

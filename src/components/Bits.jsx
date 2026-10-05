@@ -19,6 +19,13 @@ export function EvalBar({ share, flipped }) {
   );
 }
 
+/** Open-book icon: marks moves that follow named opening theory. */
+export const BookIcon = () => (
+  <svg className="book-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5zM12 6.5v13" />
+  </svg>
+);
+
 const Icon = ({ d }) => (
   <svg viewBox="0 0 24 24">
     <path d={d} />

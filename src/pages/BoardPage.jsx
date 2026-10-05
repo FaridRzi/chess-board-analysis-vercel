@@ -3,6 +3,8 @@ import { Chess, validateFen } from 'chess.js';
 import Board from '../components/Board.jsx';
 import BoardEditor from '../components/BoardEditor.jsx';
 import ReviewLane from '../components/ReviewLane.jsx';
+import BookBar from '../components/BookBar.jsx';
+import { bookAt, bookOfGame, loadBook } from '../lib/openings.js';
 import { useReview } from '../useReview.js';
 import { mainLine } from '../lib/review.js';
 import EnginePanel from '../components/EnginePanel.jsx';
@@ -12,12 +14,18 @@ import { useEngine } from '../useEngine.js';
 import { GameTree, lastOf, mainAncestor, nextOf } from '../lib/tree.js';
 import { parseGameText, looksLikeFen, labelFor } from '../lib/pgn.js';
 import { parseChessComLink, fetchChessComGame } from '../lib/chesscom.js';
-import { START_FEN, chessAt, formatTimeControl, turnOf, winShare } from '../lib/chess.js';
+import { START_FEN, chessAt, formatTimeControl, moveNumberLabel, turnOf, winShare } from '../lib/chess.js';
 
 // The page opens on a fresh board: the starting position, no moves yet.
 function initialGame() {
   const tree = new GameTree(START_FEN, []);
   return { tree, cur: tree.root, headers: {}, label: 'New game', notice: null };
+}
+
+/** "7. Nf3" or "7… h6" for a move played from `fen`. */
+function numberedMove(fen, san) {
+  const { n, black } = moveNumberLabel(fen);
+  return `${n}${black ? '…' : '.'} ${san}`;
 }
 
 function Notice({ notice }) {
@@ -29,7 +37,7 @@ function Notice({ notice }) {
   );
 }
 
-export default function BoardPage({ active, handoff }) {
+export default function BoardPage({ active, handoff, onExplore }) {
   const [game, setGame] = useState(initialGame);
   const [version, setVersion] = useState(0); // bumps when the tree changes or the board must redraw
   const [orientation, setOrientation] = useState('white');
@@ -56,7 +64,42 @@ export default function BoardPage({ active, handoff }) {
   const engineOn = engineWanted && !locked && active && !editing;
   const engine = useEngine({ fen: cur.fen, enabled: engineOn, depth });
   // Game review runs whenever the engine is allowed (never for games in progress).
-  const review = useReview(tree, engineWanted && !locked);
+  const rawReview = useReview(tree, engineWanted && !locked);
+
+  // Opening book. Like the engine, it stays off for games still in progress (fair play).
+  const [book, setBook] = useState(null);
+  useEffect(() => {
+    loadBook().then(setBook, () => {});
+  }, []);
+  const gameBook = useMemo(() => (book && !locked ? bookOfGame(book, mainLine(tree)) : null), [book, tree, locked]);
+  const hereBook = useMemo(() => (book && !locked ? bookAt(book, cur.fen) : null), [book, cur, locked]);
+  // Along the path to the current position: the last named opening, and the first move outside the book.
+  const bookPath = useMemo(() => {
+    if (!book) return { name: { text: 'Opening book' }, firstOut: null };
+    const path = [];
+    for (let n = cur; n; n = n.parent) path.unshift(n);
+    let named = null;
+    let firstOut = null;
+    for (const n of path) {
+      const at = bookAt(book, n.fen);
+      if (!at.inBook) {
+        firstOut = n;
+        break;
+      }
+      if (at.opening) named = at.opening;
+    }
+    return { name: named ? { eco: named.eco, text: named.name } : { text: 'Starting position' }, firstOut };
+  }, [book, cur]);
+
+  // Book moves carry the book icon instead of a review mark, so their marks (and counts) are left out.
+  const review = useMemo(() => {
+    if (!gameBook || !gameBook.ids.size || !rawReview.summary) return rawReview;
+    const marks = new Map([...rawReview.marks].filter(([id]) => !gameBook.ids.has(id)));
+    const zero = { blunder: 0, only: 0, sacrifice: 0 };
+    const summary = { white: { ...rawReview.summary.white, ...zero }, black: { ...rawReview.summary.black, ...zero } };
+    for (const [id, kind] of marks) summary[turnOf(tree.byId.get(id).parent.fen)][kind]++;
+    return { ...rawReview, marks, summary };
+  }, [rawReview, gameBook, tree]);
   const curMark = review.marks.get(cur.id) || null;
   const boardMark = useMemo(() => (curMark ? { square: cur.lastMove[1], kind: curMark } : null), [curMark, cur]);
 
@@ -236,6 +279,7 @@ export default function BoardPage({ active, handoff }) {
   const arrows = useMemo(() => (arrowKey ? arrowKey.split(',').filter(Boolean) : []), [arrowKey]);
 
   const meta = [];
+  if (gameBook && gameBook.opening) meta.push(`${gameBook.opening.eco} ${gameBook.opening.name}`);
   if (headers.Date && !/^\?/.test(headers.Date)) meta.push(headers.Date.replace(/\./g, '-').replace(/-\?\?/g, ''));
   if (headers.TimeControl && headers.TimeControl !== '-') meta.push(formatTimeControl(headers.TimeControl));
   if (headers.Result) meta.push(headers.Result === '*' ? 'In progress' : headers.Result);
@@ -295,9 +339,11 @@ export default function BoardPage({ active, handoff }) {
       {!editing && (
         <ReviewLane
           review={review}
+          book={gameBook && gameBook.plies ? gameBook : null}
           white={headers.White}
           black={headers.Black}
           onJump={jumpToMark}
+          onBook={() => goTo(gameBook.last)}
         />
       )}
 
@@ -365,6 +411,25 @@ export default function BoardPage({ active, handoff }) {
               mark={curMark}
             />
 
+            {!locked && (
+              <BookBar
+                ready={!!book}
+                here={hereBook || { inBook: false, moves: [] }}
+                name={bookPath.name}
+                gameMove={nextOf(cur) ? nextOf(cur).san : null}
+                moveLabel={(san) => numberedMove(cur.fen, san)}
+                left={bookPath.firstOut ? numberedMove(bookPath.firstOut.parent.fen, bookPath.firstOut.san) : null}
+                onPlay={(san) => goTo(tree.playSan(cur, san))}
+                onLastBook={() => bookPath.firstOut && goTo(bookPath.firstOut.parent)}
+                onExplore={() => {
+                  const end = bookPath.firstOut ? bookPath.firstOut.parent : cur;
+                  const sans = [];
+                  for (let n = end; n.parent; n = n.parent) sans.unshift(n.san);
+                  onExplore(sans);
+                }}
+              />
+            )}
+
             <section className="card" aria-label="Moves">
               {/* One fixed-height header: the side-line actions replace the game details instead of adding a row. */}
               <div className={'gamehead' + (cur.main ? '' : ' exploring')}>
@@ -383,7 +448,7 @@ export default function BoardPage({ active, handoff }) {
                   </span>
                 )}
               </div>
-              <MoveList root={tree.root} cur={cur} result={headers.Result} onSelect={goTo} version={version} marks={review.marks} />
+              <MoveList root={tree.root} cur={cur} result={headers.Result} onSelect={goTo} version={version} marks={review.marks} bookIds={gameBook ? gameBook.ids : null} />
               <FenRow fen={cur.fen} />
             </section>
             <p className="foot">Tap an engine line, or any move in it, to see it on the board. Drag the piece that just moved to change that move.</p>

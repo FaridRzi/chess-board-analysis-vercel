@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Board from '../components/Board.jsx';
 import { GameTree } from '../lib/tree.js';
 import { START_FEN, chessAt, tryMove } from '../lib/chess.js';
-import { continuations, leadOf, loadBook, locate, numbered, searchOpenings } from '../lib/openings.js';
+import { bookAt, loadBook, numbered, searchOpenings } from '../lib/openings.js';
 
 /** Moves from the start to `node`, as SAN. */
 function pathOf(node) {
@@ -11,7 +11,7 @@ function pathOf(node) {
   return nodes;
 }
 
-export default function OpeningsPage({ active, onAnalyze }) {
+export default function OpeningsPage({ active, onAnalyze, line }) {
   const [book, setBook] = useState(null);
   const [failed, setFailed] = useState(false);
   const [tree] = useState(() => new GameTree(START_FEN, []));
@@ -34,8 +34,14 @@ export default function OpeningsPage({ active, onAnalyze }) {
 
   const path = useMemo(() => pathOf(cur), [cur]);
   const sans = useMemo(() => path.map((n) => n.san), [path]);
-  const here = useMemo(() => (book ? locate(book.root, sans) : { node: null, named: null }), [book, sans]);
-  const next = useMemo(() => continuations(here.node), [here]);
+  // Matched by position, so a known position is recognized whatever move order reached it.
+  const here = useMemo(() => (book ? bookAt(book, cur.fen) : { inBook: false, opening: null, lines: 0, moves: [] }), [book, cur]);
+  const named = useMemo(() => {
+    let last = null;
+    if (book) for (const n of path) last = bookAt(book, n.fen).opening || last;
+    return last;
+  }, [book, path]);
+  const next = here.moves;
   const results = useMemo(() => (book ? searchOpenings(book.all, query) : []), [book, query]);
 
   // Arrows for the three continuations with the most named lines.
@@ -49,12 +55,23 @@ export default function OpeningsPage({ active, onAnalyze }) {
   );
 
   const play = (san) => goTo(tree.playSan(cur, san));
+  const playLine = useCallback(
+    (line) => {
+      let node = tree.root;
+      for (const san of line) node = node && tree.playSan(node, san);
+      goTo(node);
+    },
+    [tree, goTo]
+  );
   const jumpTo = (opening) => {
-    let node = tree.root;
-    for (const san of opening.sans) node = node && tree.playSan(node, san);
-    goTo(node);
+    playLine(opening.sans);
     setQuery('');
   };
+
+  // A position sent over from Game analysis.
+  useEffect(() => {
+    if (line) playLine(line.sans);
+  }, [line, playLine]);
   const onBoardMove = (from, to) => {
     const node = tree.userMove(cur, from, to);
     if (node) goTo(node);
@@ -77,7 +94,7 @@ export default function OpeningsPage({ active, onAnalyze }) {
   }, [active, cur, tree, goTo]);
 
   const atStart = !cur.parent;
-  const exact = here.node && here.node.opening;
+  const exact = here.opening;
   const ply = sans.length;
   const moveLabel = (san) => (ply % 2 === 0 ? `${ply / 2 + 1}. ${san}` : `${(ply + 1) / 2}… ${san}`);
 
@@ -85,14 +102,14 @@ export default function OpeningsPage({ active, onAnalyze }) {
   let note = null;
   if (atStart) title = 'Starting position';
   else if (exact) title = exact.name;
-  else if (here.named) {
-    title = here.named.name;
-    note = here.node ? 'No separate name for this exact position yet. Keep going.' : 'These moves have left the named openings.';
+  else if (named) {
+    title = named.name;
+    note = here.inBook ? 'No separate name for this exact position yet. Keep going.' : 'These moves have left the named openings.';
   } else {
     title = 'Unnamed line';
     note = 'These moves have left the named openings.';
   }
-  const eco = exact ? exact.eco : !atStart && here.named ? here.named.eco : null;
+  const eco = exact ? exact.eco : !atStart && named ? named.eco : null;
 
   return (
     <div className="page openings" hidden={!active}>
@@ -145,7 +162,7 @@ export default function OpeningsPage({ active, onAnalyze }) {
           <section className="card" aria-label="Next moves">
             <div className="card-head">
               <h2>Next moves</h2>
-              {book && <span className="op-count">{next.length ? `${here.node.count - (exact ? 1 : 0)} named lines from here` : ''}</span>}
+              {book && <span className="op-count">{next.length ? `${here.lines} named lines from here` : ''}</span>}
             </div>
             {failed ? (
               <p className="op-empty">The opening list couldn’t be loaded. Check your connection and reload the page.</p>
@@ -153,12 +170,12 @@ export default function OpeningsPage({ active, onAnalyze }) {
               <p className="op-empty">Loading openings…</p>
             ) : next.length === 0 ? (
               <p className="op-empty">
-                {here.node ? 'This is the end of the named line.' : 'No named openings continue from this position.'} Go back a move, or search below.
+                {here.inBook ? 'This is the end of the named line.' : 'No named openings continue from this position.'} Go back a move, or search below.
               </p>
             ) : (
               <ul className="op-next">
                 {next.map((n) => {
-                  const lead = n.opening || leadOf(n);
+                  const lead = n.lead;
                   return (
                     <li key={n.san}>
                       <button type="button" onClick={() => play(n.san)}>

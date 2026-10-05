@@ -357,16 +357,35 @@ cg-board square.check { background: radial-gradient(ellipse at center, rgba(255,
 .howto-body code, .notice code { font-family: var(--mono); font-size: .92em; background: var(--panel-2); border-radius: 4px; padding: 0 4px; }
 
 .explore-actions { display: flex; gap: 6px; flex: none; }
+/* Variations: indented, collapsible blocks. A deeper variation nests inside the one it branches from. */
+.moves .moves-tools { grid-column: 1 / -1; display: flex; justify-content: flex-end; padding: 0 4px 4px; }
+.moves .moves-tools button { border: 0; background: none; padding: 2px 4px; color: var(--accent); font-family: var(--sans); font-size: 12.5px; font-weight: 600; }
+.moves .moves-tools button:hover { text-decoration: underline; }
 .moves .vars { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; margin: 3px 2px 5px; }
 .moves .var {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: start;
   font-family: var(--mono); font-size: 13.5px; line-height: 1.9;
-  background: var(--line-bg); border-left: 3px solid var(--explore); border-radius: 0 6px 6px 0; padding: 2px 8px;
+  background: var(--line-bg); border-left: 3px solid var(--explore); border-radius: 0 6px 6px 0; padding: 2px 6px 2px 2px;
 }
 .moves .var.active { background: var(--line-bg-strong); }
+.moves .var-toggle { border: 0; background: none; padding: 0; width: 20px; height: 25px; display: grid; place-items: center; color: var(--explore); border-radius: 4px; }
+.moves .var-toggle:hover { background: color-mix(in oklab, var(--explore) 18%, transparent); }
+.moves .var-toggle svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; transition: transform .12s; }
+.moves .var-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+.moves .var-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.moves .var-kids { display: flex; flex-direction: column; gap: 3px; margin: 1px 0; }
+/* Nested blocks: no fill of their own, just a thinner guide line, so depth reads from the indentation. */
+.moves .var .var { background: none; border-left: 2px solid color-mix(in oklab, var(--explore) 55%, transparent); border-radius: 0; padding: 0 0 0 2px; }
+.moves .var .var.active { background: none; border-left-color: var(--explore); }
+.moves .var-summary {
+  border: 0; background: none; padding: 0; text-align: left; font: inherit; color: var(--explore); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.moves .var-summary .pv-san { font-weight: 500; }
+.moves .var-count { font-family: var(--sans); font-size: 11.5px; color: var(--muted); margin-left: 8px; }
 .moves .var .vn { color: var(--muted); margin-right: 3px; }
 .moves .var .mv.v { padding: 1px 4px; font-size: 13.5px; color: var(--explore); font-weight: 500; }
 .moves .var .mv.v.cur { background: var(--explore); color: var(--panel); }
-.moves .var .sub { color: var(--muted); }
 
 .line.played { cursor: default; background: var(--panel-2); }
 .line.played:hover { background: var(--panel-2); }
@@ -695,3 +714,24 @@ cg-board square.rv-sacrifice { background-color: rgba(19, 160, 109, .38); }
   .op-next button { grid-template-columns: 64px minmax(0, 1fr) auto; gap: 8px; }
   .op-actions .btn-primary { margin-left: 0; flex: 1 1 100%; }
 }
+
+/* ---------- opening book on the analysis page ---------- */
+.book-icon { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; flex: none; }
+.moves .mv .book-icon { margin-left: 6px; vertical-align: -2px; color: var(--muted); }
+.moves .mv.cur .book-icon { color: inherit; }
+.lane-book { border: 0; background: none; padding: 0; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.lane-book:hover { color: var(--ink); text-decoration: underline; }
+.bookbar { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; height: 78px; }
+.bk-head { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--muted); }
+.bk-head strong { flex: 1; min-width: 0; font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-head .op-eco { margin: 0 6px 0 0; font-size: 12px; padding: 1px 6px; }
+.bk-link { border: 0; background: none; padding: 0; color: var(--accent); font-size: 12.5px; font-weight: 600; white-space: nowrap; flex: none; }
+.bk-link:hover { text-decoration: underline; }
+.bk-moves { display: flex; align-items: center; gap: 6px; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; padding-bottom: 2px; }
+.bk-note { color: var(--muted); font-size: 13px; }
+.bk-move {
+  flex: none; border: 1px solid var(--line); background: var(--panel-2); border-radius: 6px; padding: 2px 9px; min-height: 28px;
+  font-family: var(--mono); font-size: 13px;
+}
+.bk-move:hover { border-color: var(--accent); }
+.bk-move.played { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
