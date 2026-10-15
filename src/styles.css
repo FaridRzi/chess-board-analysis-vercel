@@ -735,3 +735,32 @@ cg-board square.rv-sacrifice { background-color: rgba(19, 160, 109, .38); }
 }
 .bk-move:hover { border-color: var(--accent); }
 .bk-move.played { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+/* ---------- Amu Akbar ---------- */
+.amu-stage {
+  min-height: min(70vh, 620px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  border-radius: 16px; border: 1px solid var(--line); overflow: hidden; padding: 24px 16px;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(212, 168, 83, .16), transparent 62%),
+    var(--panel);
+}
+.amu-name {
+  margin: 0; text-align: center; font-family: "Great Vibes", "Snell Roundhand", "Apple Chancery", cursive;
+  font-weight: 400; font-size: clamp(64px, 15vw, 168px); line-height: 1.15; letter-spacing: .01em;
+  padding: 0 .15em; /* room for the script's swashes */
+  background: linear-gradient(100deg, #9a6b1f 0%, #e9c46a 30%, #fff1c9 50%, #e0b04f 70%, #8f6118 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 14px rgba(212, 168, 83, .28));
+  animation: amu-in 1.4s cubic-bezier(.2, .7, .2, 1) both;
+}
+.amu-rule {
+  width: min(240px, 50%); height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 168, 83, .8), transparent);
+  animation: amu-in 1.4s .3s cubic-bezier(.2, .7, .2, 1) both;
+}
+@keyframes amu-in { from { opacity: 0; transform: translateY(10px); letter-spacing: .08em; } to { opacity: 1; transform: none; } }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .amu-stage { background: radial-gradient(ellipse at 50% 40%, rgba(212, 168, 83, .22), transparent 62%), #1a1d24; }
+}
+:root[data-theme="light"] .amu-stage { background: radial-gradient(ellipse at 50% 40%, rgba(212, 168, 83, .22), transparent 62%), #1a1d24; }
+@media (prefers-reduced-motion: reduce) { .amu-name, .amu-rule { animation: none; } }

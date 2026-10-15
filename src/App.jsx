@@ -2,14 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import BoardPage from './pages/BoardPage.jsx';
 import StatsPage from './pages/StatsPage.jsx';
 import OpeningsPage from './pages/OpeningsPage.jsx';
+import AmuPage from './pages/AmuPage.jsx';
 
 const PAGES = [
   { id: 'board', hash: '#/', label: 'Game analysis', blurb: 'Stockfish 19 in your browser · top 5 moves' },
   { id: 'stats', hash: '#/stats', label: 'Player stats', blurb: 'Wins, draws and losses from Chess.com' },
   { id: 'openings', hash: '#/openings', label: 'Opening explorer', blurb: 'Browse openings and their names' },
+  { id: 'amu', hash: '#/amu', label: 'Amu Akbar', blurb: 'Amu Akbar' },
 ];
 
-const pageFromHash = () => (location.hash.startsWith('#/stats') ? 'stats' : location.hash.startsWith('#/openings') ? 'openings' : 'board');
+const pageFromHash = () => {
+  const page = PAGES.find((p) => p.hash !== '#/' && location.hash.startsWith(p.hash));
+  return page ? page.id : 'board';
+};
 
 export default function App() {
   const [page, setPage] = useState(pageFromHash);
@@ -94,6 +99,7 @@ export default function App() {
           location.hash = '#/';
         }}
       />
+      <AmuPage active={page === 'amu'} />
     </div>
   );
 }
