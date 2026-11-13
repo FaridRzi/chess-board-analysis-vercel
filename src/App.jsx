@@ -1,22 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
+import HomePage from './pages/HomePage.jsx';
 import BoardPage from './pages/BoardPage.jsx';
 import StatsPage from './pages/StatsPage.jsx';
 import OpeningsPage from './pages/OpeningsPage.jsx';
+import { CHESS_PAGES, HOME, PAGES, SITE, pageFromHash } from './site.js';
 
-const PAGES = [
-  { id: 'board', hash: '#/', label: 'Game analysis', blurb: 'Stockfish 19 in your browser · top 5 moves' },
-  { id: 'stats', hash: '#/stats', label: 'Player stats', blurb: 'Wins, draws and losses from Chess.com' },
-  { id: 'openings', hash: '#/openings', label: 'Opening explorer', blurb: 'Browse openings and their names' },
-];
+const isChess = (id) => CHESS_PAGES.some((p) => p.id === id);
 
-const pageFromHash = () => {
-  const page = PAGES.find((p) => p.hash !== '#/' && location.hash.startsWith(p.hash));
-  return page ? page.id : 'board';
-};
+function NavLink({ p, page, onPick }) {
+  return (
+    <a href={p.hash} aria-current={p.id === page ? 'page' : undefined} onClick={onPick}>
+      <strong>{p.label}</strong>
+      <span>{p.blurb}</span>
+    </a>
+  );
+}
 
 export default function App() {
   const [page, setPage] = useState(pageFromHash);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [chessOpen, setChessOpen] = useState(() => isChess(pageFromHash()));
   const [handoff, setHandoff] = useState(null); // a line sent from the opening explorer to the board page
   const [explorerLine, setExplorerLine] = useState(null); // and one sent the other way
   const menuBtn = useRef(null);
@@ -27,6 +30,11 @@ export default function App() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
+
+  // Opening the menu on a chess page shows that page in its group.
+  useEffect(() => {
+    if (menuOpen && isChess(page)) setChessOpen(true);
+  }, [menuOpen, page]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -41,7 +49,12 @@ export default function App() {
     return () => document.removeEventListener('keydown', onKey);
   }, [menuOpen]);
 
+  useEffect(() => {
+    document.title = page === 'home' ? SITE.name : `${PAGES.find((p) => p.id === page).label} · Chess · ${SITE.name}`;
+  }, [page]);
+
   const current = PAGES.find((p) => p.id === page);
+  const close = () => setMenuOpen(false);
 
   return (
     <div className="app">
@@ -59,33 +72,55 @@ export default function App() {
             <path d="M4 7h16M4 12h16M4 17h16" />
           </svg>
         </button>
-        <img className="logo" src="/logo.png" alt="" width="34" height="34" />
-        <h1>
-          Candidate <span>Lines</span>
-        </h1>
-        <p>{current.blurb}</p>
+        <a className="site-home" href={HOME.hash}>
+          <span className="monogram" aria-hidden="true">{SITE.initials}</span>
+          <h1>{SITE.name}</h1>
+        </a>
+        {isChess(page) && (
+          <span className="crumb">
+            <span aria-hidden="true">/</span> Chess <span aria-hidden="true">/</span> <b>{current.label}</b>
+          </span>
+        )}
+        {isChess(page) && <p>{current.blurb}</p>}
       </header>
 
-      <div className={'scrim' + (menuOpen ? ' open' : '')} onClick={() => setMenuOpen(false)} aria-hidden="true" />
+      <div className={'scrim' + (menuOpen ? ' open' : '')} onClick={close} aria-hidden="true" />
       <nav id="drawer" ref={drawer} className={'drawer' + (menuOpen ? ' open' : '')} aria-label="Pages" inert={!menuOpen}>
         <div className="drawer-head">
-          <img className="logo" src="/logo.png" alt="" width="30" height="30" />
-          Candidate <span>Lines</span>
+          <span className="monogram" aria-hidden="true">{SITE.initials}</span>
+          {SITE.name}
         </div>
-        {PAGES.map((p) => (
-          <a key={p.id} href={p.hash} aria-current={p.id === page ? 'page' : undefined} onClick={() => setMenuOpen(false)}>
-            <strong>{p.label}</strong>
-            <span>{p.blurb}</span>
-          </a>
-        ))}
+        <NavLink p={HOME} page={page} onPick={close} />
+
+        <div className="nav-group">
+          <button
+            type="button"
+            className={'nav-group-btn' + (isChess(page) ? ' has-current' : '')}
+            aria-expanded={chessOpen}
+            aria-controls="nav-chess"
+            onClick={() => setChessOpen((o) => !o)}
+          >
+            <img className="logo" src="/logo.png" alt="" width="22" height="22" />
+            <strong>Chess</strong>
+            <svg className="chev" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 6l6 6-6 6" />
+            </svg>
+          </button>
+          <div id="nav-chess" className="nav-group-items" hidden={!chessOpen}>
+            {CHESS_PAGES.map((p) => (
+              <NavLink key={p.id} p={p} page={page} onPick={close} />
+            ))}
+          </div>
+        </div>
       </nav>
 
+      <HomePage active={page === 'home'} />
       <BoardPage
         active={page === 'board'}
         handoff={handoff}
         onExplore={(sans) => {
           setExplorerLine({ sans });
-          location.hash = '#/openings';
+          location.hash = '#/chess/openings';
         }}
       />
       <StatsPage active={page === 'stats'} />
@@ -94,7 +129,7 @@ export default function App() {
         line={explorerLine}
         onAnalyze={(sans, name) => {
           setHandoff({ sans, name });
-          location.hash = '#/';
+          location.hash = '#/chess';
         }}
       />
     </div>
