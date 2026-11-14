@@ -53,10 +53,10 @@ export function dayProfile(day, lat, lon) {
     SSp, MNb, SR, SN, SS, MNa, SRn,
     daylight: SS - SR,
     hour: {
-      morning: (SN - SR) / 5,
-      afternoon: (SS - SN) / 7,
-      evening: (MNa - SS) / 5,
-      night: (SRn - MNa) / 7,
+      morning: (SN - SR) / 6,
+      afternoon: (SS - SN) / 6,
+      evening: (MNa - SS) / 6,
+      night: (SRn - MNa) / 6,
     },
   };
 }
@@ -73,17 +73,17 @@ export function computeSolarClock(now, lat, lon) {
     : { SR: p.prevSR, SN: p.prevSN, SS: p.SSp, MN: p.MNb, END: p.SR };
   const stretch = (a, b) => Interval.fromDateTimes(DateTime.fromMillis(a), DateTime.fromMillis(b));
   const zones = [
-    { zone: 'morning',   span: stretch(c.SR, c.SN),  first: 7,  count: 5, ampm: 'AM' },
-    { zone: 'afternoon', span: stretch(c.SN, c.SS),  first: 12, count: 7, ampm: 'PM' },
-    { zone: 'evening',   span: stretch(c.SS, c.MN),  first: 7,  count: 5, ampm: 'PM' },
-    { zone: 'night',     span: stretch(c.MN, c.END), first: 12, count: 7, ampm: 'AM' },
+    { zone: 'morning',   span: stretch(c.SR, c.SN),  first: 6,  count: 6, ampm: 'AM' },
+    { zone: 'afternoon', span: stretch(c.SN, c.SS),  first: 12, count: 6, ampm: 'PM' },
+    { zone: 'evening',   span: stretch(c.SS, c.MN),  first: 6,  count: 6, ampm: 'PM' },
+    { zone: 'night',     span: stretch(c.MN, c.END), first: 12, count: 6, ampm: 'AM' },
   ];
   const z = zones.find(q => q.span.contains(now)) || zones[3];
   const total = z.span.length();
   const f = Math.min(Math.max(now.diff(z.span.start).as('milliseconds') / total, 0), 1 - 1e-9);
   const elapsed = f * z.count;
   const hourOffset = Math.floor(elapsed);
-  const hh = z.first === 7 ? 7 + hourOffset : (hourOffset === 0 ? 12 : hourOffset);
+  const hh = z.first === 6 ? 6 + hourOffset : (hourOffset === 0 ? 12 : hourOffset);
   const minutesFloat = (elapsed - hourOffset) * 60;
   const mm = Math.floor(minutesFloat);
   const ss = Math.floor((minutesFloat - mm) * 60);

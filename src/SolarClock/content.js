@@ -37,9 +37,9 @@ const content = {
     arcAria: 'One full cycle from one sunrise to the next, split into morning, afternoon, evening and night',
     arcNote: 'One full cycle, sunrise to sunrise. The white dot is now.',
     arcMarks: {
-      sunrise: '7 AM',
+      sunrise: '6 AM',
       noon: '12 PM',
-      sunset: '7 PM',
+      sunset: '6 PM',
       midnight: '12 AM',
     },
     // Shown when you hover or tap a label under the strip. {time} is the wall-clock time in the city.
