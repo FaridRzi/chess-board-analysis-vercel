@@ -64,7 +64,7 @@ export default function ClockFace({ content, cities, cityKey, onCityChange, cust
           : ' '}
       </p>
 
-      {r && <Arc cycle={r.cycle} nowMs={now.toMillis()} content={content} />}
+      {r && <Arc cycle={r.cycle} nowMs={now.toMillis()} tz={loc.tz} content={content} />}
       {r && <p className="sc-arc-note">{c.arcNote}</p>}
     </header>
   );

@@ -82,6 +82,18 @@
 .sc-arc-labels span { position: absolute; top: 0; transform: translateX(-50%); font-size: .8rem; color: var(--sc-ink-dim); white-space: nowrap; }
 .sc-arc-labels span.sc-l { transform: none; }
 .sc-arc-labels span.sc-r { transform: translateX(-100%); }
+.sc-arc-mark { cursor: help; outline: none; border-radius: 4px; padding: 0 .15rem; }
+.sc-arc-mark:hover, .sc-arc-mark:focus-visible { color: var(--sc-ink); }
+.sc-arc-mark:focus-visible { box-shadow: 0 0 0 2px var(--sc-hair); }
+.sc-arc-mark::after {
+  content: attr(data-tip); position: absolute; top: calc(100% + .45rem); left: 50%; transform: translateX(-50%);
+  background: var(--sc-raise); color: var(--sc-ink); border: 1px solid var(--sc-hair); border-radius: 6px;
+  padding: .35rem .55rem; font-size: .8rem; white-space: nowrap; box-shadow: 0 8px 20px rgba(0, 0, 0, .45);
+  opacity: 0; pointer-events: none; transition: opacity .12s; z-index: 5;
+}
+.sc-arc-mark.sc-l::after { left: 0; transform: none; }
+.sc-arc-mark.sc-r::after { left: auto; right: 0; transform: none; }
+.sc-arc-mark:hover::after, .sc-arc-mark:focus::after { opacity: 1; }
 .sc-arc-note { margin: .4rem 0 0; max-width: 62ch; font-size: .85rem; color: var(--sc-ink-dim); }
 
 /* The reading column */

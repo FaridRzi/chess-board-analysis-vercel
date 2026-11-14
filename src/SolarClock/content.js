@@ -42,6 +42,15 @@ const content = {
       sunset: '7 PM',
       midnight: '12 AM',
     },
+    // Shown when you hover or tap a label under the strip. {time} is the wall-clock time in the city.
+    arcTips: {
+      sunrise: 'Sunrise at {time}',
+      noon: 'Solar noon at {time}',
+      sunset: 'Sunset at {time}',
+      midnight: 'Middle of the night at {time}',
+      yesterday: '{time} yesterday',
+      tomorrow: '{time} tomorrow',
+    },
 
     // Messages shown instead of the time
     needCoordinates: 'Enter a latitude and longitude to start.',
