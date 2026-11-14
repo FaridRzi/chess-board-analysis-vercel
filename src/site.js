@@ -13,7 +13,9 @@ export const CHESS_PAGES = [
   { id: 'openings', hash: '#/chess/openings', label: 'Opening explorer', blurb: 'Browse openings and their names' },
 ];
 
-export const PAGES = [HOME, ...CHESS_PAGES];
+export const SOLAR_PAGE = { id: 'solar', hash: '#/solar-clock', label: 'Solar Clock', blurb: 'Time told by the sun, for any city' };
+
+export const PAGES = [HOME, ...CHESS_PAGES, SOLAR_PAGE];
 
 // Old links (before the portfolio move) pointed at #/stats and #/openings.
 const LEGACY = { '#/stats': '#/chess/stats', '#/openings': '#/chess/openings' };
@@ -26,6 +28,6 @@ export function pageFromHash() {
     return pageFromHash();
   }
   // Longest hash first so #/chess/stats is not matched by #/chess.
-  const match = [...CHESS_PAGES].sort((a, b) => b.hash.length - a.hash.length).find((p) => raw.startsWith(p.hash));
+  const match = [...CHESS_PAGES, SOLAR_PAGE].sort((a, b) => b.hash.length - a.hash.length).find((p) => raw.startsWith(p.hash));
   return match ? match.id : 'home';
 }

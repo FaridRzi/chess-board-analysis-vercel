@@ -3,15 +3,21 @@ import HomePage from './pages/HomePage.jsx';
 import BoardPage from './pages/BoardPage.jsx';
 import StatsPage from './pages/StatsPage.jsx';
 import OpeningsPage from './pages/OpeningsPage.jsx';
-import { CHESS_PAGES, HOME, PAGES, SITE, pageFromHash } from './site.js';
+import SolarClockPage, { SunIcon } from './pages/SolarClockPage.jsx';
+import { CHESS_PAGES, HOME, PAGES, SITE, SOLAR_PAGE, pageFromHash } from './site.js';
 
 const isChess = (id) => CHESS_PAGES.some((p) => p.id === id);
 
-function NavLink({ p, page, onPick }) {
-  return (
-    <a href={p.hash} aria-current={p.id === page ? 'page' : undefined} onClick={onPick}>
+function NavLink({ p, page, onPick, icon }) {
+  const text = (
+    <>
       <strong>{p.label}</strong>
       <span>{p.blurb}</span>
+    </>
+  );
+  return (
+    <a href={p.hash} className={icon ? 'nav-icon-link' : undefined} aria-current={p.id === page ? 'page' : undefined} onClick={onPick}>
+      {icon ? <>{icon}<div>{text}</div></> : text}
     </a>
   );
 }
@@ -50,7 +56,8 @@ export default function App() {
   }, [menuOpen]);
 
   useEffect(() => {
-    document.title = page === 'home' ? SITE.name : `${PAGES.find((p) => p.id === page).label} · Chess · ${SITE.name}`;
+    const label = PAGES.find((p) => p.id === page).label;
+    document.title = page === 'home' ? SITE.name : isChess(page) ? `${label} · Chess · ${SITE.name}` : `${label} · ${SITE.name}`;
   }, [page]);
 
   const current = PAGES.find((p) => p.id === page);
@@ -81,7 +88,12 @@ export default function App() {
             <span aria-hidden="true">/</span> Chess <span aria-hidden="true">/</span> <b>{current.label}</b>
           </span>
         )}
-        {isChess(page) && <p>{current.blurb}</p>}
+        {page === 'solar' && (
+          <span className="crumb">
+            <span aria-hidden="true">/</span> <b>{current.label}</b>
+          </span>
+        )}
+        {page !== 'home' && <p>{current.blurb}</p>}
       </header>
 
       <div className={'scrim' + (menuOpen ? ' open' : '')} onClick={close} aria-hidden="true" />
@@ -112,6 +124,7 @@ export default function App() {
             ))}
           </div>
         </div>
+        <NavLink p={SOLAR_PAGE} page={page} onPick={close} icon={<SunIcon />} />
       </nav>
 
       <HomePage active={page === 'home'} />
@@ -132,6 +145,7 @@ export default function App() {
           location.hash = '#/chess';
         }}
       />
+      <SolarClockPage active={page === 'solar'} />
     </div>
   );
 }

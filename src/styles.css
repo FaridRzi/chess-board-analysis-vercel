@@ -172,6 +172,10 @@ button { cursor: pointer; }
   stroke-linecap: round; stroke-linejoin: round; transition: transform .18s ease;
 }
 .nav-group-btn[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.drawer a.nav-icon-link { flex-direction: row; align-items: center; gap: 10px; }
+.drawer a.nav-icon-link div { display: flex; flex-direction: column; gap: 1px; }
+.sun-icon { box-shadow: none; }
+.nav-group-btn .logo, .nav-icon-link .logo { border-radius: 5px; }
 .nav-group-items { display: flex; flex-direction: column; gap: 2px; margin-left: 22px; padding-left: 10px; border-left: 1px solid var(--line); }
 
 /* ---------- home ---------- */
